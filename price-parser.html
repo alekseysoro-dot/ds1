@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Price Parser — Парсер цен</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232733;
+    --border: #2e3345;
+    --text: #e4e6ef;
+    --text2: #8b8fa7;
+    --accent: #6c5ce7;
+    --accent-hover: #7d6ff0;
+    --green: #00b894;
+    --red: #e17055;
+    --orange: #fdcb6e;
+    --blue: #74b9ff;
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .logo svg { width: 28px; height: 28px; }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--surface2);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: calc(100vh - 61px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .sidebar-section h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text2);
+    margin-bottom: 12px;
+  }
+
+  .store-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .store-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+
+  .store-item:hover { background: var(--surface2); }
+  .store-item.active { background: var(--accent); color: #fff; }
+
+  .store-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .store-meta {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .store-name { font-weight: 600; font-size: 13px; }
+  .store-count { font-size: 11px; color: var(--text2); }
+  .store-item.active .store-count { color: rgba(255,255,255,0.7); }
+
+  /* Add store button */
+  .add-store-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: none;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    width: 100%;
+    text-align: left;
+  }
+
+  .add-store-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(108, 92, 231, 0.05);
+  }
+
+  /* Main content */
+  .main {
+    padding: 24px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  /* Search bar */
+  .search-bar {
+    display: flex;
+    gap: 12px;
+  }
+
+  .search-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-input-wrap svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: var(--text2);
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 12px 14px 12px 42px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text2); }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--text2); }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .stat-change {
+    font-size: 12px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .stat-change.up { color: var(--green); }
+  .stat-change.down { color: var(--red); }
+
+  /* Table */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .table-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .table-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-sm {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  thead th:hover { color: var(--text); }
+
+  tbody tr {
+    transition: background 0.1s;
+  }
+
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody td {
+    padding: 14px 20px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(46, 51, 69, 0.5);
+    vertical-align: middle;
+  }
+
+  .product-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .product-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .product-info { display: flex; flex-direction: column; }
+  .product-title { font-weight: 500; color: var(--text); }
+  .product-sku { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .price { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .price-old {
+    text-decoration: line-through;
+    color: var(--text2);
+    font-weight: 400;
+    margin-left: 8px;
+    font-size: 12px;
+  }
+
+  .change-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .change-badge.down {
+    background: rgba(0, 184, 148, 0.12);
+    color: var(--green);
+  }
+
+  .change-badge.up {
+    background: rgba(225, 112, 85, 0.12);
+    color: var(--red);
+  }
+
+  .change-badge.same {
+    background: rgba(139, 143, 167, 0.12);
+    color: var(--text2);
+  }
+
+  .store-tag {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--surface2);
+  }
+
+  .last-check {
+    color: var(--text2);
+    font-size: 12px;
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--text2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .icon-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 520px;
+    max-width: 90vw;
+    padding: 28px;
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text2);
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+
+  .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  /* Parsing indicator */
+  .parsing-bar {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .parsing-bar.active { display: flex; }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-wrap { flex: 1; }
+  .progress-text {
+    font-size: 13px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-bar {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--blue));
+    border-radius: 3px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+
+  /* Chart placeholder */
+  .chart-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .chart-section h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 60px;
+  }
+
+  .mini-bar {
+    flex: 1;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    min-width: 4px;
+  }
+
+  .mini-bar:hover { opacity: 1; }
+
+  .chart-canvas {
+    width: 100%;
+    height: 200px;
+    position: relative;
+  }
+
+  .chart-line {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+  }
+
+  /* Filter chips */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .chip:hover { border-color: var(--text2); color: var(--text); }
+  .chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 14px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 300;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+    </svg>
+    Price Parser
+  </div>
+  <div class="header-actions">
+    <div class="status-badge">
+      <span class="status-dot"></span>
+      Парсер активен
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Добавить товар
+    </button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <h3>Магазины</h3>
+      <div class="store-list" id="storeList">
+        <div class="store-item active" onclick="selectStore(this, 'all')">
+          <div class="store-icon" style="background:#2d3436;color:#dfe6e9;">*</div>
+          <div class="store-meta">
+            <span class="store-name">Все магазины</span>
+            <span class="store-count">24 товара</span>
+          </div>
+        </div>
+        <div class="store-item" onclick="selectStore(this, 'wb')">
+          <div class="store-icon" style="background:#6c5ce7;color:#fff;">W</div>
+          <div class="store-meta">
+            <span class="store-name">Wildberries</span>
+            <span class="store-count">8 товаров</span>
+          </div>
+        </div>
+        <div class="store-item" onclick="selectStore(this, 'ozon')">
+          <div class="store-icon" style="background:#0984e3;color:#fff;">O</div>
+          <div class="store-meta">
+            <span class="store-name">Ozon</span>
+            <span class="store-count">6 товаров</span>
+          </div>
+        </div>
+        <div class="store-item" onclick="selectStore(this, 'ym')">
+          <div class="store-icon" style="background:#fdcb6e;color:#2d3436;">Я</div>
+          <div class="store-meta">
+            <span class="store-name">Яндекс Маркет</span>
+            <span class="store-count">5 товаров</span>
+          </div>
+        </div>
+        <div class="store-item" onclick="selectStore(this, 'dns')">
+          <div class="store-icon" style="background:#e17055;color:#fff;">D</div>
+          <div class="store-meta">
+            <span class="store-name">DNS</span>
+            <span class="store-count">3 товара</span>
+          </div>
+        </div>
+        <div class="store-item" onclick="selectStore(this, 'mvideo')">
+          <div class="store-icon" style="background:#00b894;color:#fff;">M</div>
+          <div class="store-meta">
+            <span class="store-name">МВидео</span>
+            <span class="store-count">2 товара</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="add-store-btn" onclick="showToast('Функция добавления магазина')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Добавить магазин
+    </button>
+
+    <div class="sidebar-section">
+      <h3>Быстрые фильтры</h3>
+      <div class="store-list">
+        <div class="store-item" onclick="showToast('Фильтр: цена снизилась')">
+          <div class="store-icon" style="background:rgba(0,184,148,0.15);color:var(--green);font-size:14px;">&#9660;</div>
+          <div class="store-meta">
+            <span class="store-name">Цена снизилась</span>
+            <span class="store-count">7 товаров</span>
+          </div>
+        </div>
+        <div class="store-item" onclick="showToast('Фильтр: цена выросла')">
+          <div class="store-icon" style="background:rgba(225,112,85,0.15);color:var(--red);font-size:14px;">&#9650;</div>
+          <div class="store-meta">
+            <span class="store-name">Цена выросла</span>
+            <span class="store-count">4 товара</span>
+          </div>
+        </div>
+        <div class="store-item" onclick="showToast('Фильтр: недоступные')">
+          <div class="store-icon" style="background:rgba(139,143,167,0.15);color:var(--text2);font-size:14px;">!</div>
+          <div class="store-meta">
+            <span class="store-name">Нет в наличии</span>
+            <span class="store-count">2 товара</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Search -->
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" placeholder="Поиск по названию, SKU или URL..." id="searchInput" oninput="filterTable()">
+      </div>
+      <button class="btn btn-primary" onclick="startParsing()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Обновить цены
+      </button>
+      <button class="btn btn-secondary" onclick="showToast('Экспорт в CSV')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Экспорт
+      </button>
+    </div>
+
+    <!-- Parsing progress -->
+    <div class="parsing-bar" id="parsingBar">
+      <div class="spinner"></div>
+      <div class="progress-wrap">
+        <div class="progress-text">
+          <span id="progressLabel">Парсинг цен...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="stopParsing()">Стоп</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Отслеживается</div>
+        <div class="stat-value">24</div>
+        <div class="stat-change up">+3 за неделю</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Цена снизилась</div>
+        <div class="stat-value" style="color:var(--green)">7</div>
+        <div class="stat-change down">&#9660; средн. -12%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Цена выросла</div>
+        <div class="stat-value" style="color:var(--red)">4</div>
+        <div class="stat-change up">&#9650; средн. +8%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Последнее обновление</div>
+        <div class="stat-value" style="font-size:16px">14:32</div>
+        <div class="stat-change" style="color:var(--text2)">сегодня</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-row">
+      <button class="chip active" onclick="toggleChip(this)">Все</button>
+      <button class="chip" onclick="toggleChip(this)">Электроника</button>
+      <button class="chip" onclick="toggleChip(this)">Одежда</button>
+      <button class="chip" onclick="toggleChip(this)">Бытовая техника</button>
+      <button class="chip" onclick="toggleChip(this)">Красота</button>
+      <button class="chip" onclick="toggleChip(this)">Продукты</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">Отслеживаемые товары</span>
+        <div class="table-actions">
+          <button class="btn btn-secondary btn-sm" onclick="showToast('Настройки таблицы')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Товар</th>
+            <th>Магазин</th>
+            <th>Текущая цена</th>
+            <th>Изменение</th>
+            <th>Мин. цена</th>
+            <th>Проверка</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Add product modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Добавить товар для отслеживания</h2>
+    <div class="form-group">
+      <label>URL товара</label>
+      <input type="text" class="form-input" placeholder="https://www.wildberries.ru/catalog/..." id="urlInput">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Магазин</label>
+        <select class="form-select" id="storeSelect">
+          <option value="">Автоопределение</option>
+          <option>Wildberries</option>
+          <option>Ozon</option>
+          <option>Яндекс Маркет</option>
+          <option>DNS</option>
+          <option>МВидео</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Категория</label>
+        <select class="form-select">
+          <option>Электроника</option>
+          <option>Одежда</option>
+          <option>Бытовая техника</option>
+          <option>Красота</option>
+          <option>Продукты</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Интервал проверки</label>
+        <select class="form-select">
+          <option>Каждые 30 минут</option>
+          <option>Каждый час</option>
+          <option selected>Каждые 3 часа</option>
+          <option>Каждые 6 часов</option>
+          <option>Раз в день</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Уведомлять при снижении на</label>
+        <input type="text" class="form-input" placeholder="5%" value="5%">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="addProduct()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const products = [
+  { name: 'iPhone 15 Pro 256GB', sku: 'APL-15P-256', store: 'Wildberries', storeKey: 'wb', icon: 'W', color: '#6c5ce7', emoji: '📱', price: 89990, oldPrice: 94990, minPrice: 85990, change: -5.3, time: '2 мин' },
+  { name: 'Samsung Galaxy S24 Ultra', sku: 'SAM-S24U-256', store: 'Ozon', storeKey: 'ozon', icon: 'O', color: '#0984e3', emoji: '📱', price: 99990, oldPrice: 104990, minPrice: 94990, change: -4.8, time: '5 мин' },
+  { name: 'Sony WH-1000XM5', sku: 'SNY-WH5-BLK', store: 'Яндекс Маркет', storeKey: 'ym', icon: 'Я', color: '#fdcb6e', emoji: '🎧', price: 27490, oldPrice: 25990, minPrice: 23990, change: 5.8, time: '12 мин' },
+  { name: 'MacBook Air M3 16/512', sku: 'APL-MBA-M3', store: 'DNS', storeKey: 'dns', icon: 'D', color: '#e17055', emoji: '💻', price: 134990, oldPrice: 139990, minPrice: 129990, change: -3.6, time: '8 мин' },
+  { name: 'Dyson V15 Detect', sku: 'DYS-V15-DET', store: 'МВидео', storeKey: 'mvideo', icon: 'M', color: '#00b894', emoji: '🔌', price: 54990, oldPrice: 54990, minPrice: 49990, change: 0, time: '15 мин' },
+  { name: 'Nike Air Max 90', sku: 'NK-AM90-WHT', store: 'Wildberries', storeKey: 'wb', icon: 'W', color: '#6c5ce7', emoji: '👟', price: 8990, oldPrice: 11990, minPrice: 7990, change: -25.0, time: '3 мин' },
+  { name: 'PlayStation 5 Slim', sku: 'SNY-PS5-SLM', store: 'Ozon', storeKey: 'ozon', icon: 'O', color: '#0984e3', emoji: '🎮', price: 47990, oldPrice: 44990, minPrice: 42990, change: 6.7, time: '20 мин' },
+  { name: 'Xiaomi Robot Vacuum X10+', sku: 'XMI-RBV-X10', store: 'Яндекс Маркет', storeKey: 'ym', icon: 'Я', color: '#fdcb6e', emoji: '🤖', price: 32990, oldPrice: 36990, minPrice: 29990, change: -10.8, time: '7 мин' },
+  { name: 'Samsung 65" OLED 4K', sku: 'SAM-TV65-OLED', store: 'DNS', storeKey: 'dns', icon: 'D', color: '#e17055', emoji: '📺', price: 149990, oldPrice: 159990, minPrice: 139990, change: -6.3, time: '25 мин' },
+  { name: 'Кроссовки Adidas Ultraboost', sku: 'ADD-UB-BLK', store: 'Wildberries', storeKey: 'wb', icon: 'W', color: '#6c5ce7', emoji: '👟', price: 12490, oldPrice: 11490, minPrice: 9990, change: 8.7, time: '1 мин' },
+];
+
+let currentStore = 'all';
+let parsingInterval = null;
+
+function formatPrice(n) {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+}
+
+function renderTable(filter = '') {
+  const tbody = document.getElementById('tableBody');
+  const filtered = products.filter(p => {
+    const matchStore = currentStore === 'all' || p.storeKey === currentStore;
+    const matchSearch = !filter || p.name.toLowerCase().includes(filter) || p.sku.toLowerCase().includes(filter);
+    return matchStore && matchSearch;
+  });
+
+  tbody.innerHTML = filtered.map(p => {
+    const changeClass = p.change < 0 ? 'down' : p.change > 0 ? 'up' : 'same';
+    const changeText = p.change < 0 ? `${p.change}%` : p.change > 0 ? `+${p.change}%` : '0%';
+    const arrow = p.change < 0 ? '&#9660; ' : p.change > 0 ? '&#9650; ' : '';
+
+    return `<tr>
+      <td>
+        <div class="product-cell">
+          <div class="product-img">${p.emoji}</div>
+          <div class="product-info">
+            <span class="product-title">${p.name}</span>
+            <span class="product-sku">${p.sku}</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="store-tag" style="color:${p.color};border:1px solid ${p.color}33;background:${p.color}15">${p.store}</span></td>
+      <td><span class="price">${formatPrice(p.price)}</span>${p.oldPrice !== p.price ? `<span class="price-old">${formatPrice(p.oldPrice)}</span>` : ''}</td>
+      <td><span class="change-badge ${changeClass}">${arrow}${changeText}</span></td>
+      <td style="color:var(--green);font-weight:600">${formatPrice(p.minPrice)}</td>
+      <td><span class="last-check">${p.time} назад</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" title="История цен" onclick="showToast('График истории цен для ${p.name}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </button>
+          <button class="icon-btn" title="Открыть в магазине" onclick="showToast('Открытие страницы товара')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </button>
+          <button class="icon-btn" title="Удалить" onclick="showToast('Товар удалён из отслеживания')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function selectStore(el, key) {
+  document.querySelectorAll('.store-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  currentStore = key;
+  renderTable(document.getElementById('searchInput').value.toLowerCase());
+}
+
+function filterTable() {
+  renderTable(document.getElementById('searchInput').value.toLowerCase());
+}
+
+function openModal() {
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+}
+
+function addProduct() {
+  const url = document.getElementById('urlInput').value;
+  if (!url) {
+    showToast('Введите URL товара');
+    return;
+  }
+  closeModal();
+  showToast('Товар добавлен в отслеживание');
+  document.getElementById('urlInput').value = '';
+}
+
+function startParsing() {
+  const bar = document.getElementById('parsingBar');
+  bar.classList.add('active');
+  let progress = 0;
+
+  if (parsingInterval) clearInterval(parsingInterval);
+
+  parsingInterval = setInterval(() => {
+    progress += Math.random() * 15 + 5;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(parsingInterval);
+      parsingInterval = null;
+      setTimeout(() => {
+        bar.classList.remove('active');
+        showToast('Цены обновлены для 24 товаров');
+        // Simulate random price changes
+        products.forEach(p => {
+          const delta = (Math.random() - 0.5) * 0.06;
+          p.oldPrice = p.price;
+          p.price = Math.round(p.price * (1 + delta));
+          p.change = parseFloat((delta * 100).toFixed(1));
+          if (p.price < p.minPrice) p.minPrice = p.price;
+        });
+        renderTable(document.getElementById('searchInput').value.toLowerCase());
+      }, 500);
+    }
+    document.getElementById('progressFill').style.width = progress + '%';
+    document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
+    document.getElementById('progressLabel').textContent = `Парсинг цен... (${Math.round(progress * 24 / 100)} из 24)`;
+  }, 300);
+}
+
+function stopParsing() {
+  if (parsingInterval) {
+    clearInterval(parsingInterval);
+    parsingInterval = null;
+  }
+  document.getElementById('parsingBar').classList.remove('active');
+  showToast('Парсинг остановлен');
+}
+
+function toggleChip(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ${msg}`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// Init
+renderTable();
+
+// Auto-detect store from URL input
+document.getElementById('urlInput')?.addEventListener('input', function() {
+  const v = this.value.toLowerCase();
+  const sel = document.getElementById('storeSelect');
+  if (v.includes('wildberries')) sel.value = 'Wildberries';
+  else if (v.includes('ozon')) sel.value = 'Ozon';
+  else if (v.includes('market.yandex')) sel.value = 'Яндекс Маркет';
+  else if (v.includes('dns-shop')) sel.value = 'DNS';
+  else if (v.includes('mvideo')) sel.value = 'МВидео';
+  else sel.value = '';
+});
+</script>
+</body>
+</html>
