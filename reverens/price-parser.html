@@ -684,6 +684,130 @@
   }
   .empty-state svg { opacity: 0.3; }
   .empty-state p { font-size: 14px; }
+
+/* Drawer */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.drawer-overlay.open { pointer-events: auto; }
+
+.drawer {
+  position: fixed;
+  top: 61px; /* header height */
+  right: 0;
+  width: 380px;
+  height: calc(100vh - 61px);
+  background: var(--surface);
+  border-left: 1px solid var(--accent);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.2s ease-out;
+  z-index: 51;
+  overflow-y: auto;
+}
+
+.drawer.open { transform: translateX(0); }
+
+.drawer-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.drawer-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.drawer-subtitle { font-size: 11px; color: var(--text2); font-family: monospace; }
+
+.drawer-close {
+  width: 26px; height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: none;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.drawer-close:hover { background: var(--surface2); color: var(--text); }
+
+.drawer-price-block {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.drawer-price { font-size: 26px; font-weight: 700; font-family: monospace; }
+.drawer-delta { text-align: right; }
+.drawer-delta-value { font-size: 15px; font-weight: 700; font-family: monospace; }
+.drawer-delta-pct { font-size: 11px; margin-top: 2px; }
+
+.drawer-section {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.drawer-section-label {
+  font-size: 9px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-family: monospace;
+  margin-bottom: 10px;
+}
+
+.chart-svg { width: 100%; height: 120px; display: block; }
+
+.chart-x-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text2);
+  font-family: monospace;
+  margin-top: 4px;
+}
+
+.store-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  font-size: 12px;
+}
+
+.store-price-row.best {
+  background: rgba(108,92,231,0.08);
+  border-color: rgba(108,92,231,0.4);
+}
+
+.store-price-row.best .store-price-val { color: var(--green); font-weight: 700; }
+.store-price-name { color: var(--text2); }
+.store-price-row.best .store-price-name { color: var(--text); font-weight: 600; }
+.store-price-val { font-family: monospace; font-weight: 600; }
+
+.drawer-actions {
+  padding: 12px 20px;
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  flex-shrink: 0;
+}
 </style>
 </head>
 <body>
@@ -886,6 +1010,54 @@
       </table>
     </div>
   </main>
+</div>
+
+<!-- Product Drawer -->
+<div class="drawer" id="productDrawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title" id="drawerTitle">—</div>
+      <div class="drawer-subtitle" id="drawerSubtitle">—</div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+
+  <div class="drawer-price-block">
+    <div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Текущая цена</div>
+      <div class="drawer-price" id="drawerPrice">—</div>
+    </div>
+    <div class="drawer-delta" id="drawerDelta">
+      <div class="drawer-delta-value" id="drawerDeltaValue">—</div>
+      <div class="drawer-delta-pct" id="drawerDeltaPct">—</div>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-section-label">История цен</div>
+    <svg class="chart-svg" id="drawerChart" viewBox="0 0 340 120" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#6c5ce7" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#6c5ce7" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div class="chart-x-labels">
+      <span>−30 дн</span><span>−14 дн</span><span>−7 дн</span><span>Сейчас</span>
+    </div>
+  </div>
+
+  <div class="drawer-section">
+    <div class="drawer-section-label">Цены по магазинам</div>
+    <div id="drawerStorePrices"></div>
+  </div>
+
+  <div class="drawer-actions">
+    <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Открытие страницы товара')">↗ Открыть</button>
+    <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Редактирование товара')">✎ Изменить</button>
+    <button class="btn btn-secondary btn-sm" style="color:var(--red)" onclick="activeProductIndex !== null && deleteProduct(activeProductIndex)">✕</button>
+  </div>
 </div>
 
 <!-- Add product modal -->
