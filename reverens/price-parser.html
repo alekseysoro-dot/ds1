@@ -1326,6 +1326,15 @@ function assert(condition, msg) {
   else console.log('PASS:', msg);
 }
 
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let activeProductIndex = null;
 let drawerOpen = false;
 
@@ -1425,8 +1434,8 @@ function renderTable(filter = '') {
         <div class="product-cell">
           <div class="product-img">${p.emoji}</div>
           <div class="product-info">
-            <span class="product-title">${p.name}</span>
-            <span class="product-sku">${p.sku}</span>
+            <span class="product-title">${esc(p.name)}</span>
+            <span class="product-sku">${esc(p.sku)}</span>
           </div>
         </div>
       </td>
@@ -1671,7 +1680,16 @@ function loadSettings() {
 
 function showToast(msg) {
   const toast = document.getElementById('toast');
-  toast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ${msg}`;
+  toast.innerHTML = '';
+  // Icon
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('width', '16'); icon.setAttribute('height', '16');
+  icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('fill', 'none');
+  icon.setAttribute('stroke', 'var(--green)'); icon.setAttribute('stroke-width', '2');
+  icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+  const text = document.createTextNode(' ' + msg);
+  toast.appendChild(icon);
+  toast.appendChild(text);
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2500);
 }
