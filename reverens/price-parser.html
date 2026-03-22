@@ -1264,6 +1264,10 @@
   <div class="modal" onclick="event.stopPropagation()">
     <h2>Добавить товар для отслеживания</h2>
     <div class="form-group">
+      <label>Название товара <span style="color:var(--red)">*</span></label>
+      <input type="text" class="form-input" placeholder="Например: iPhone 15 Pro 256GB" id="nameInput">
+    </div>
+    <div class="form-group">
       <label>URL товара</label>
       <input type="text" class="form-input" placeholder="https://www.wildberries.ru/catalog/..." id="urlInput">
     </div>
@@ -1522,13 +1526,45 @@ function closeModal(e) {
 }
 
 function addProduct() {
-  const url = document.getElementById('urlInput').value;
-  if (!url) {
-    showToast('Введите URL товара');
+  const name = document.getElementById('nameInput').value.trim();
+  const url = document.getElementById('urlInput').value.trim();
+  const store = document.getElementById('storeSelect').value || 'Wildberries';
+
+  if (!name) {
+    showToast('Введите название товара');
     return;
   }
+
+  const storeMap = {
+    'Wildberries': { key: 'wb', icon: 'W', color: '#6c5ce7' },
+    'Ozon': { key: 'ozon', icon: 'O', color: '#0984e3' },
+    'Яндекс Маркет': { key: 'ym', icon: 'Я', color: '#fdcb6e' },
+    'DNS': { key: 'dns', icon: 'D', color: '#e17055' },
+    'МВидео': { key: 'mvideo', icon: 'M', color: '#00b894' },
+  };
+  const s = storeMap[store] || storeMap['Wildberries'];
+  const mockPrice = Math.round(Math.random() * 50000 + 5000);
+
+  products.push({
+    name,
+    sku: 'NEW-' + Date.now().toString().slice(-4),
+    store,
+    storeKey: s.key,
+    icon: s.icon,
+    color: s.color,
+    emoji: '📦',
+    price: mockPrice,
+    oldPrice: mockPrice,
+    minPrice: mockPrice,
+    targetPrice: Math.round(mockPrice * 0.9),
+    change: 0,
+    time: 'только что',
+  });
+
   closeModal();
-  showToast('Товар добавлен в отслеживание');
+  renderTable(document.getElementById('searchInput').value.toLowerCase());
+  showToast(`"${name}" добавлен в отслеживание`);
+  document.getElementById('nameInput').value = '';
   document.getElementById('urlInput').value = '';
 }
 
