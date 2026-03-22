@@ -801,6 +801,111 @@
   margin-top: auto;
   flex-shrink: 0;
 }
+
+/* Settings modal */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.settings-overlay.active { display: flex; }
+
+.settings-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 480px;
+  max-width: 90vw;
+  overflow: hidden;
+}
+
+.settings-modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-modal-title { font-size: 15px; font-weight: 700; }
+.settings-modal-subtitle { font-size: 11px; color: var(--text2); font-family: monospace; margin-top: 2px; }
+
+.settings-section {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-section-label {
+  font-size: 9px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-family: monospace;
+  margin-bottom: 14px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.settings-row:last-child { margin-bottom: 0; }
+
+.settings-row-label { font-size: 13px; font-weight: 500; }
+.settings-row-hint { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+.pill-group { display: flex; gap: 4px; }
+.pill {
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: monospace;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.toggle {
+  width: 40px; height: 22px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent); border-color: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(18px); }
+
+.settings-footer {
+  padding: 14px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
 </style>
 </head>
 <body>
@@ -814,6 +919,12 @@
     Price Parser
   </div>
   <div class="header-actions">
+    <button class="icon-btn" onclick="openSettings()" title="Настройки" style="width:36px;height:36px;border:1px solid var(--border);border-radius:8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
     <div class="status-badge">
       <span class="status-dot"></span>
       Парсер активен
@@ -1050,6 +1161,101 @@
     <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Открытие страницы товара')">↗ Открыть</button>
     <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Редактирование товара')">✎ Изменить</button>
     <button class="btn btn-secondary btn-sm" style="color:var(--red)" onclick="activeProductIndex !== null && deleteProduct(activeProductIndex)">✕</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsOnOverlay(event)">
+  <div class="settings-modal" onclick="event.stopPropagation()">
+
+    <div class="settings-modal-header">
+      <div>
+        <div class="settings-modal-title">Настройки</div>
+        <div class="settings-modal-subtitle">Конфигурация парсера</div>
+      </div>
+      <button class="drawer-close" onclick="closeSettings()">✕</button>
+    </div>
+
+    <!-- Section: Парсинг -->
+    <div class="settings-section">
+      <div class="settings-section-label">Парсинг</div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Интервал обновления</div>
+          <div class="settings-row-hint">Как часто проверять цены</div>
+        </div>
+        <div class="pill-group" id="intervalPills">
+          <button class="pill active" data-value="30" onclick="selectPill(this, 'intervalPills')">30 мин</button>
+          <button class="pill" data-value="60" onclick="selectPill(this, 'intervalPills')">1 ч</button>
+          <button class="pill" data-value="360" onclick="selectPill(this, 'intervalPills')">6 ч</button>
+          <button class="pill" data-value="1440" onclick="selectPill(this, 'intervalPills')">24 ч</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Автозапуск парсера</div>
+          <div class="settings-row-hint">Запускать по расписанию</div>
+        </div>
+        <div class="toggle on" id="toggleAutostart" onclick="toggleSetting(this)"></div>
+      </div>
+    </div>
+
+    <!-- Section: Уведомления -->
+    <div class="settings-section">
+      <div class="settings-section-label">Уведомления</div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Порог снижения цены</div>
+          <div class="settings-row-hint">Уведомлять при падении на</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="thresholdInput" min="1" max="99" value="5"
+            style="width:52px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:monospace;font-size:13px;text-align:center;outline:none;">
+          <span style="font-size:12px;color:var(--text2)">%</span>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Push-уведомления</div>
+          <div class="settings-row-hint">Подключается на шаге 3</div>
+        </div>
+        <div class="toggle" id="togglePush" style="opacity:0.4;pointer-events:none"></div>
+      </div>
+    </div>
+
+    <!-- Section: Данные -->
+    <div class="settings-section">
+      <div class="settings-section-label">Данные</div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Хранить историю</div>
+          <div class="settings-row-hint">Глубина истории цен</div>
+        </div>
+        <div class="pill-group" id="historyPills">
+          <button class="pill" data-value="7" onclick="selectPill(this, 'historyPills')">7 дн</button>
+          <button class="pill active" data-value="30" onclick="selectPill(this, 'historyPills')">30 дн</button>
+          <button class="pill" data-value="90" onclick="selectPill(this, 'historyPills')">90 дн</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Экспорт данных</div>
+          <div class="settings-row-hint">Выгрузить все цены в файл</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="showToast('Экспорт CSV — подключается на шаге 4')">CSV ↓</button>
+      </div>
+    </div>
+
+    <div class="settings-footer">
+      <button class="btn btn-secondary" onclick="closeSettings()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+    </div>
   </div>
 </div>
 
@@ -1371,6 +1577,54 @@ function stopParsing() {
 function toggleChip(el) {
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
+}
+
+function openSettings() {
+  loadSettings();
+  document.getElementById('settingsOverlay').classList.add('active');
+}
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('active');
+}
+
+function closeSettingsOnOverlay(e) {
+  if (e.target === document.getElementById('settingsOverlay')) closeSettings();
+}
+
+function selectPill(el, groupId) {
+  document.querySelectorAll(`#${groupId} .pill`).forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleSetting(el) {
+  el.classList.toggle('on');
+}
+
+function saveSettings() {
+  const interval = document.querySelector('#intervalPills .pill.active')?.dataset.value || '30';
+  const autostart = document.getElementById('toggleAutostart').classList.contains('on');
+  const threshold = document.getElementById('thresholdInput').value;
+  const history = document.querySelector('#historyPills .pill.active')?.dataset.value || '30';
+
+  localStorage.setItem('pp_settings', JSON.stringify({ interval, autostart, threshold, history }));
+  closeSettings();
+  showToast('Настройки сохранены');
+}
+
+function loadSettings() {
+  const raw = localStorage.getItem('pp_settings');
+  if (!raw) return;
+  const s = JSON.parse(raw);
+
+  document.querySelectorAll('#intervalPills .pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.value === s.interval);
+  });
+  document.getElementById('toggleAutostart').classList.toggle('on', s.autostart);
+  if (s.threshold) document.getElementById('thresholdInput').value = s.threshold;
+  document.querySelectorAll('#historyPills .pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.value === s.history);
+  });
 }
 
 function showToast(msg) {
