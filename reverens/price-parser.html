@@ -1604,7 +1604,8 @@ function toggleSetting(el) {
 function saveSettings() {
   const interval = document.querySelector('#intervalPills .pill.active')?.dataset.value || '30';
   const autostart = document.getElementById('toggleAutostart').classList.contains('on');
-  const threshold = document.getElementById('thresholdInput').value;
+  const rawThreshold = parseInt(document.getElementById('thresholdInput').value, 10);
+  const threshold = Math.min(99, Math.max(1, isNaN(rawThreshold) ? 5 : rawThreshold));
   const history = document.querySelector('#historyPills .pill.active')?.dataset.value || '30';
 
   localStorage.setItem('pp_settings', JSON.stringify({ interval, autostart, threshold, history }));
@@ -1615,12 +1616,17 @@ function saveSettings() {
 function loadSettings() {
   const raw = localStorage.getItem('pp_settings');
   if (!raw) return;
-  const s = JSON.parse(raw);
+  let s;
+  try {
+    s = JSON.parse(raw);
+  } catch (e) {
+    return; // corrupted data — ignore, keep defaults
+  }
 
   document.querySelectorAll('#intervalPills .pill').forEach(p => {
     p.classList.toggle('active', p.dataset.value === s.interval);
   });
-  document.getElementById('toggleAutostart').classList.toggle('on', s.autostart);
+  document.getElementById('toggleAutostart').classList.toggle('on', !!s.autostart);
   if (s.threshold) document.getElementById('thresholdInput').value = s.threshold;
   document.querySelectorAll('#historyPills .pill').forEach(p => {
     p.classList.toggle('active', p.dataset.value === s.history);
