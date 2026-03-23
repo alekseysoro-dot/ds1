@@ -3,908 +3,733 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Price Parser — Парсер цен</title>
+<title>Price Parser — Мониторинг цен WB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #232733;
-    --border: #2e3345;
-    --text: #e4e6ef;
-    --text2: #8b8fa7;
-    --accent: #6c5ce7;
-    --accent-hover: #7d6ff0;
-    --green: #00b894;
-    --red: #e17055;
-    --orange: #fdcb6e;
-    --blue: #74b9ff;
-    --radius: 12px;
-  }
-
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
-
-  /* Header */
-  .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 20px;
-    font-weight: 700;
-  }
-
-  .logo svg { width: 28px; height: 28px; }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .status-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    background: var(--surface2);
-    border-radius: 20px;
-    font-size: 13px;
-    color: var(--text2);
-  }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* Layout */
-  .layout {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    min-height: calc(100vh - 61px);
-  }
-
-  /* Sidebar */
-  .sidebar {
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    overflow-y: auto;
-  }
-
-  .sidebar-section h3 {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--text2);
-    margin-bottom: 12px;
-  }
-
-  .store-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .store-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-size: 14px;
-  }
-
-  .store-item:hover { background: var(--surface2); }
-  .store-item.active { background: var(--accent); color: #fff; }
-
-  .store-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .store-meta {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .store-name { font-weight: 600; font-size: 13px; }
-  .store-count { font-size: 11px; color: var(--text2); }
-  .store-item.active .store-count { color: rgba(255,255,255,0.7); }
-
-  /* Add store button */
-  .add-store-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border: 1px dashed var(--border);
-    border-radius: 8px;
-    background: none;
-    color: var(--text2);
-    cursor: pointer;
-    font-size: 13px;
-    transition: all 0.15s;
-    width: 100%;
-    text-align: left;
-  }
-
-  .add-store-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(108, 92, 231, 0.05);
-  }
-
-  /* Main content */
-  .main {
-    padding: 24px 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    overflow-y: auto;
-  }
-
-  /* Search bar */
-  .search-bar {
-    display: flex;
-    gap: 12px;
-  }
-
-  .search-input-wrap {
-    flex: 1;
-    position: relative;
-  }
-
-  .search-input-wrap svg {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    color: var(--text2);
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 12px 14px 12px 42px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-
-  .search-input:focus { border-color: var(--accent); }
-  .search-input::placeholder { color: var(--text2); }
-
-  .btn {
-    padding: 12px 24px;
-    border-radius: var(--radius);
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
-
-  .btn-secondary {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .btn-secondary:hover { border-color: var(--text2); }
-
-  /* Stats row */
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-    color: var(--text2);
-    margin-bottom: 6px;
-  }
-
-  .stat-value {
-    font-size: 24px;
-    font-weight: 700;
-  }
-
-  .stat-change {
-    font-size: 12px;
-    margin-top: 4px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .stat-change.up { color: var(--green); }
-  .stat-change.down { color: var(--red); }
-
-  /* Table */
-  .table-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    flex: 1;
-  }
-
-  .table-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .table-title {
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  .table-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  .btn-sm {
-    padding: 6px 14px;
-    font-size: 12px;
-    border-radius: 8px;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  thead th {
-    text-align: left;
-    padding: 12px 20px;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text2);
-    border-bottom: 1px solid var(--border);
-    font-weight: 600;
-    cursor: pointer;
-    user-select: none;
-  }
-
-  thead th:hover { color: var(--text); }
-
-  tbody tr {
-    transition: background 0.1s;
-  }
-
-  tbody tr:hover { background: var(--surface2); }
-
-  tbody td {
-    padding: 14px 20px;
-    font-size: 13px;
-    border-bottom: 1px solid rgba(46, 51, 69, 0.5);
-    vertical-align: middle;
-  }
-
-  .product-cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .product-img {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background: var(--surface2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  .product-info { display: flex; flex-direction: column; }
-  .product-title { font-weight: 500; color: var(--text); }
-  .product-sku { font-size: 11px; color: var(--text2); margin-top: 2px; }
-
-  .price { font-weight: 700; font-variant-numeric: tabular-nums; }
-  .price-old {
-    text-decoration: line-through;
-    color: var(--text2);
-    font-weight: 400;
-    margin-left: 8px;
-    font-size: 12px;
-  }
-
-  .change-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .change-badge.down {
-    background: rgba(0, 184, 148, 0.12);
-    color: var(--green);
-  }
-
-  .change-badge.up {
-    background: rgba(225, 112, 85, 0.12);
-    color: var(--red);
-  }
-
-  .change-badge.same {
-    background: rgba(139, 143, 167, 0.12);
-    color: var(--text2);
-  }
-
-  .store-tag {
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    background: var(--surface2);
-  }
-
-  .last-check {
-    color: var(--text2);
-    font-size: 12px;
-  }
-
-  .row-actions {
-    display: flex;
-    gap: 4px;
-  }
-
-  .icon-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    border: none;
-    background: none;
-    color: var(--text2);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-  }
-
-  .icon-btn:hover { background: var(--surface2); color: var(--text); }
-
-  /* Modal */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-  }
-
-  .modal-overlay.active { display: flex; }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    width: 520px;
-    max-width: 90vw;
-    padding: 28px;
-  }
-
-  .modal h2 {
-    font-size: 18px;
-    margin-bottom: 20px;
-  }
-
-  .form-group {
-    margin-bottom: 16px;
-  }
-
-  .form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: var(--text2);
-  }
-
-  .form-input {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-
-  .form-input:focus { border-color: var(--accent); }
-
-  .form-select {
-    width: 100%;
-    padding: 10px 14px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 14px;
-    outline: none;
-    appearance: none;
-    cursor: pointer;
-  }
-
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 24px;
-  }
-
-  /* Parsing indicator */
-  .parsing-bar {
-    display: none;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 20px;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .parsing-bar.active { display: flex; }
-
-  .spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .progress-wrap { flex: 1; }
-  .progress-text {
-    font-size: 13px;
-    margin-bottom: 6px;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .progress-bar {
-    height: 6px;
-    background: var(--surface2);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--blue));
-    border-radius: 3px;
-    transition: width 0.3s;
-    width: 0%;
-  }
-
-  /* Chart placeholder */
-  .chart-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-  }
-
-  .chart-section h3 {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 16px;
-  }
-
-  .mini-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: 3px;
-    height: 60px;
-  }
-
-  .mini-bar {
-    flex: 1;
-    background: var(--accent);
-    border-radius: 3px 3px 0 0;
-    opacity: 0.6;
-    transition: opacity 0.15s;
-    min-width: 4px;
-  }
-
-  .mini-bar:hover { opacity: 1; }
-
-  .chart-canvas {
-    width: 100%;
-    height: 200px;
-    position: relative;
-  }
-
-  .chart-line {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 100%;
-  }
-
-  /* Filter chips */
-  .filter-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .chip {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    border: 1px solid var(--border);
-    background: none;
-    color: var(--text2);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .chip:hover { border-color: var(--text2); color: var(--text); }
-  .chip.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    padding: 14px 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    transform: translateY(100px);
-    opacity: 0;
-    transition: all 0.3s;
-    z-index: 300;
-  }
-
-  .toast.show {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
-    .stats-row { grid-template-columns: repeat(2, 1fr); }
-  }
-
-  /* Active row */
-  tbody tr.active-row,
-  tbody tr.active-row:hover {
-    border-left: 2px solid var(--accent);
-    background: rgba(108, 92, 231, 0.10);
-  }
-
-  /* Empty state */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-    color: var(--text2);
-    gap: 12px;
-  }
-  .empty-state svg { opacity: 0.3; }
-  .empty-state p { font-size: 14px; }
-
-/* Drawer */
-
-.drawer {
-  position: fixed;
-  top: 61px; /* header height */
-  right: 0;
-  width: 380px;
-  height: calc(100vh - 61px);
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #1a1a24;
+  --border: #1f1f2e;
+  --text: #e2e2e8;
+  --text2: #6b6b7a;
+  --accent: #00f5ff;
+  --accent-dim: rgba(0,245,255,0.06);
+  --accent-border: rgba(0,245,255,0.22);
+  --green: #22c55e;
+  --red: #ef4444;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── Header ── */
+.header {
   background: var(--surface);
-  border-left: 1px solid var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.logo-mark {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.header-actions { display: flex; align-items: center; gap: 10px; }
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(34,197,94,0.06);
+  border: 1px solid rgba(34,197,94,0.18);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--green);
+  animation: blink 2s infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: calc(100vh - 56px);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 0;
+}
+
+.sidebar-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text2);
+  padding: 0 20px;
+  margin-bottom: 6px;
+}
+
+.store-list { display: flex; flex-direction: column; gap: 1px; margin-bottom: 20px; }
+
+.store-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-left: 2px solid transparent;
+  font-size: 13px;
+}
+
+.store-item:hover:not(.disabled) { background: var(--surface2); }
+.store-item.active {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
+}
+.store-item.active .store-name { color: var(--accent); }
+.store-item.disabled { opacity: 0.4; cursor: default; }
+
+.store-icon {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.store-meta { flex: 1; min-width: 0; }
+.store-name { font-size: 13px; font-weight: 500; }
+.store-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 1px;
+}
+
+.soon-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.sidebar-divider { height: 1px; background: var(--border); margin: 0 18px 18px; }
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-left: 2px solid transparent;
+  font-size: 13px;
+}
+
+.filter-item:hover { background: var(--surface2); }
+.filter-item.active { background: var(--accent-dim); border-left-color: var(--accent); }
+.filter-item.active .store-name { color: var(--accent); }
+
+.filter-icon {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* ── Main ── */
+.main {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.search-bar { display: flex; gap: 8px; }
+
+.search-input-wrap { flex: 1; position: relative; }
+
+.search-input-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text2);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--text2); }
+
+.btn {
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  background: none;
+  color: var(--text);
+}
+
+.btn:hover { border-color: var(--text2); }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  font-weight: 600;
+}
+.btn-primary:hover { background: #00d8e8; border-color: #00d8e8; color: #000; }
+
+.btn-danger { color: var(--red); }
+.btn-danger:hover { border-color: var(--red); background: rgba(239,68,68,0.08); }
+
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* ── Parsing bar ── */
+.parsing-bar {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px 18px;
+  align-items: center;
+  gap: 16px;
+}
+.parsing-bar.active { display: flex; }
+
+.spinner {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.progress-wrap { flex: 1; }
+.progress-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.progress-bar { height: 2px; background: var(--surface2); overflow: hidden; }
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  transition: width 0.3s;
+  width: 0%;
+}
+
+/* ── Stats ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.stat-card { background: var(--surface); padding: 16px 18px; }
+
+.stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 6px;
+}
+
+/* ── Filter chips ── */
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.chip {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.1s;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.chip:hover { border-color: var(--text2); color: var(--text); }
+.chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* ── Table ── */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  flex: 1;
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text2);
+}
+
+.table-actions { display: flex; gap: 6px; }
+
+table { width: 100%; border-collapse: collapse; }
+
+thead th {
+  text-align: left;
+  padding: 10px 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+  user-select: none;
+}
+
+tbody tr { transition: background 0.08s; cursor: pointer; }
+tbody tr:hover { background: var(--surface2); }
+tbody tr.active-row { background: var(--accent-dim); border-left: 2px solid var(--accent); }
+
+tbody td {
+  padding: 12px 18px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+
+.product-cell { display: flex; align-items: center; gap: 10px; }
+
+.product-img {
+  width: 32px; height: 32px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.product-title { font-size: 13px; font-weight: 500; }
+.product-sku {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+.price { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; }
+.price-old {
+  font-family: 'JetBrains Mono', monospace;
+  text-decoration: line-through;
+  color: var(--text2);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.change-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.change-badge.down { background: rgba(34,197,94,0.1); color: var(--green); }
+.change-badge.up { background: rgba(239,68,68,0.1); color: var(--red); }
+.change-badge.same { background: var(--surface2); color: var(--text2); }
+
+.store-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.last-check { font-family: 'JetBrains Mono', monospace; color: var(--text2); font-size: 11px; }
+.row-actions { display: flex; gap: 2px; }
+
+.icon-btn {
+  width: 28px; height: 28px;
+  border: none; background: none;
+  color: var(--text2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.icon-btn:hover { background: var(--surface2); color: var(--text); }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px; color: var(--text2); gap: 12px;
+}
+.empty-state p {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Drawer ── */
+.drawer {
+  position: fixed;
+  top: 56px; right: 0;
+  width: 360px;
+  height: calc(100vh - 56px);
+  background: var(--surface);
+  border-left: 1px solid var(--accent);
+  display: flex; flex-direction: column;
   transform: translateX(100%);
   transition: transform 0.2s ease-out;
   z-index: 51;
   overflow-y: auto;
 }
-
 .drawer.open { transform: translateX(0); }
 
 .drawer-header {
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: flex; align-items: flex-start; justify-content: space-between;
   flex-shrink: 0;
 }
 
-.drawer-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
-.drawer-subtitle { font-size: 11px; color: var(--text2); font-family: monospace; }
+.drawer-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.drawer-subtitle { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text2); }
 
 .drawer-close {
-  width: 26px; height: 26px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: none;
-  color: var(--text2);
-  cursor: pointer;
+  width: 24px; height: 24px;
+  border: 1px solid var(--border); background: none;
+  color: var(--text2); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
-  transition: all 0.15s;
+  font-size: 12px; flex-shrink: 0; transition: all 0.1s;
 }
 .drawer-close:hover { background: var(--surface2); color: var(--text); }
 
 .drawer-price-block {
-  padding: 14px 20px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
-}
-
-.drawer-price { font-size: 26px; font-weight: 700; font-family: monospace; }
-.drawer-delta { text-align: right; }
-.drawer-delta-value { font-size: 15px; font-weight: 700; font-family: monospace; }
-.drawer-delta-pct { font-size: 11px; margin-top: 2px; }
-
-.drawer-section {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.drawer-section-label {
-  font-size: 9px;
-  color: var(--text2);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  font-family: monospace;
-  margin-bottom: 10px;
-}
-
-.chart-svg { width: 100%; height: 120px; display: block; }
-
-.chart-x-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: var(--text2);
-  font-family: monospace;
-  margin-top: 4px;
-}
-
-.store-price-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 7px 10px;
-  border-radius: 6px;
-  margin-bottom: 4px;
-  border: 1px solid var(--border);
   background: var(--surface2);
-  font-size: 12px;
 }
 
-.store-price-row.best {
-  background: rgba(108,92,231,0.08);
-  border-color: rgba(108,92,231,0.4);
+.drawer-price { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; }
+.drawer-delta { text-align: right; }
+.drawer-delta-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+.drawer-delta-pct { font-family: 'JetBrains Mono', monospace; font-size: 10px; margin-top: 2px; }
+
+.drawer-section { padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.drawer-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 10px;
 }
 
-.store-price-row.best .store-price-val { color: var(--green); font-weight: 700; }
-.store-price-name { color: var(--text2); }
-.store-price-row.best .store-price-name { color: var(--text); font-weight: 600; }
-.store-price-val { font-family: monospace; font-weight: 600; }
+.chart-svg { width: 100%; height: 110px; display: block; }
+.chart-x-labels {
+  display: flex; justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--text2); margin-top: 4px;
+}
+
+.seller-price-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 10px; margin-bottom: 3px;
+  border: 1px solid var(--border); font-size: 12px;
+}
+.seller-price-row.best { border-color: var(--accent-border); background: var(--accent-dim); }
+.seller-price-row.best .seller-price-val { color: var(--green); font-weight: 700; }
+.seller-price-name { color: var(--text2); font-size: 12px; }
+.seller-price-row.best .seller-price-name { color: var(--text); }
+.seller-price-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
 
 .drawer-actions {
-  padding: 12px 20px;
-  display: flex;
-  gap: 8px;
-  border-top: 1px solid var(--border);
-  margin-top: auto;
-  flex-shrink: 0;
+  padding: 12px 18px; display: flex; gap: 6px;
+  border-top: 1px solid var(--border); margin-top: auto; flex-shrink: 0;
 }
 
-/* Settings modal */
+/* ── Modals ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+}
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  width: 500px; max-width: 90vw;
+  max-height: 90vh; overflow-y: auto;
+}
+
+.modal-header {
+  padding: 16px 22px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.modal-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+
+.modal-body { padding: 20px 22px; }
+.modal-footer {
+  padding: 14px 22px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+
+.form-group { margin-bottom: 14px; }
+
+.form-label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text2); margin-bottom: 6px;
+}
+
+.form-input, .form-select {
+  width: 100%; padding: 9px 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-size: 13px;
+  font-family: 'Inter', sans-serif; outline: none;
+  transition: border-color 0.15s; appearance: none;
+}
+.form-input:focus, .form-select:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text2); }
+
+.form-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text2); margin-top: 4px;
+}
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.feed-box {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-dim);
+  padding: 14px; margin-bottom: 16px;
+}
+
+.feed-box-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px;
+}
+
+.divider-or {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text2); text-transform: uppercase;
+}
+.divider-or::before, .divider-or::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── Settings Modal ── */
 .settings-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; z-index: 200;
 }
 .settings-overlay.active { display: flex; }
 
 .settings-modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 480px;
-  max-width: 90vw;
-  overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border);
+  width: 460px; max-width: 90vw; overflow: hidden;
 }
 
 .settings-modal-header {
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  padding: 16px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.settings-modal-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.settings-modal-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text2); margin-top: 2px;
 }
 
-.settings-modal-title { font-size: 15px; font-weight: 700; }
-.settings-modal-subtitle { font-size: 11px; color: var(--text2); font-family: monospace; margin-top: 2px; }
-
-.settings-section {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
-}
-
+.settings-section { padding: 16px 22px; border-bottom: 1px solid var(--border); }
 .settings-section-label {
-  font-size: 9px;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  font-family: monospace;
-  margin-bottom: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 14px;
 }
 
 .settings-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
 }
 .settings-row:last-child { margin-bottom: 0; }
-
 .settings-row-label { font-size: 13px; font-weight: 500; }
-.settings-row-hint { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.settings-row-hint { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text2); margin-top: 2px; }
 
-.pill-group { display: flex; gap: 4px; }
+.pill-group { display: flex; gap: 2px; }
 .pill {
   padding: 5px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-family: monospace;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  color: var(--text2);
-  cursor: pointer;
-  transition: all 0.15s;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text2); cursor: pointer; transition: all 0.1s;
 }
-.pill.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
+.pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
 
 .toggle {
-  width: 40px; height: 22px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
+  width: 38px; height: 20px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; position: relative;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
 }
-.toggle.on { background: var(--accent); border-color: var(--accent); }
+.toggle.on { background: rgba(0,245,255,0.12); border-color: var(--accent); }
 .toggle::after {
-  content: '';
-  position: absolute;
-  width: 16px; height: 16px;
-  background: #fff;
-  border-radius: 50%;
-  top: 2px; left: 2px;
-  transition: transform 0.2s;
+  content: ''; position: absolute;
+  width: 14px; height: 14px; background: var(--text2);
+  border-radius: 50%; top: 2px; left: 2px; transition: all 0.2s;
 }
-.toggle.on::after { transform: translateX(18px); }
+.toggle.on::after { background: var(--accent); transform: translateX(18px); }
 
-.settings-footer {
-  padding: 14px 24px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.settings-footer { padding: 14px 22px; display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  padding: 12px 18px; background: var(--surface); border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 0 32px rgba(0,0,0,0.5);
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.22s ease-out; z-index: 300;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 </head>
@@ -913,24 +738,25 @@
 <!-- Header -->
 <header class="header">
   <div class="logo">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-    </svg>
-    Price Parser
+    <div class="logo-mark">PP</div>
+    PRICE_PARSER
   </div>
   <div class="header-actions">
-    <button class="icon-btn" onclick="openSettings()" title="Настройки" style="width:36px;height:36px;border:1px solid var(--border);border-radius:8px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <button class="icon-btn" onclick="openSettings()" title="Настройки"
+      style="width:36px;height:36px;border:1px solid var(--border);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </button>
     <div class="status-badge">
       <span class="status-dot"></span>
-      Парсер активен
+      WB · Активен
     </div>
     <button class="btn btn-primary" onclick="openModal()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
       Добавить товар
     </button>
   </div>
@@ -939,82 +765,55 @@
 <div class="layout">
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="sidebar-section">
-      <h3>Магазины</h3>
-      <div class="store-list" id="storeList">
-        <div class="store-item active" onclick="selectStore(this, 'all')">
-          <div class="store-icon" style="background:#2d3436;color:#dfe6e9;">*</div>
-          <div class="store-meta">
-            <span class="store-name">Все магазины</span>
-            <span class="store-count">24 товара</span>
-          </div>
+    <div class="sidebar-label">Маркетплейс</div>
+    <div class="store-list">
+      <div class="store-item active" onclick="selectStore(this, 'all')">
+        <div class="store-icon" style="color:var(--accent);border-color:var(--accent-border);">*</div>
+        <div class="store-meta">
+          <span class="store-name">Все товары</span>
+          <span class="store-count" id="countAll">0 позиций</span>
         </div>
-        <div class="store-item" onclick="selectStore(this, 'wb')">
-          <div class="store-icon" style="background:#6c5ce7;color:#fff;">W</div>
-          <div class="store-meta">
-            <span class="store-name">Wildberries</span>
-            <span class="store-count">8 товаров</span>
-          </div>
+      </div>
+      <div class="store-item" onclick="selectStore(this, 'wb')">
+        <div class="store-icon" style="color:#a78bfa;border-color:#a78bfa44;">W</div>
+        <div class="store-meta">
+          <span class="store-name">Wildberries</span>
+          <span class="store-count" id="countWB">0 товаров</span>
         </div>
-        <div class="store-item" onclick="selectStore(this, 'ozon')">
-          <div class="store-icon" style="background:#0984e3;color:#fff;">O</div>
-          <div class="store-meta">
-            <span class="store-name">Ozon</span>
-            <span class="store-count">6 товаров</span>
-          </div>
+      </div>
+      <div class="store-item disabled">
+        <div class="store-icon">O</div>
+        <div class="store-meta">
+          <span class="store-name">Ozon</span>
+          <span class="store-count">—</span>
         </div>
-        <div class="store-item" onclick="selectStore(this, 'ym')">
-          <div class="store-icon" style="background:#fdcb6e;color:#2d3436;">Я</div>
-          <div class="store-meta">
-            <span class="store-name">Яндекс Маркет</span>
-            <span class="store-count">5 товаров</span>
-          </div>
+        <span class="soon-tag">Скоро</span>
+      </div>
+      <div class="store-item disabled">
+        <div class="store-icon">Я</div>
+        <div class="store-meta">
+          <span class="store-name">Яндекс Маркет</span>
+          <span class="store-count">—</span>
         </div>
-        <div class="store-item" onclick="selectStore(this, 'dns')">
-          <div class="store-icon" style="background:#e17055;color:#fff;">D</div>
-          <div class="store-meta">
-            <span class="store-name">DNS</span>
-            <span class="store-count">3 товара</span>
-          </div>
-        </div>
-        <div class="store-item" onclick="selectStore(this, 'mvideo')">
-          <div class="store-icon" style="background:#00b894;color:#fff;">M</div>
-          <div class="store-meta">
-            <span class="store-name">МВидео</span>
-            <span class="store-count">2 товара</span>
-          </div>
-        </div>
+        <span class="soon-tag">Скоро</span>
       </div>
     </div>
 
-    <button class="add-store-btn" onclick="showToast('Функция добавления магазина')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Добавить магазин
-    </button>
-
-    <div class="sidebar-section">
-      <h3>Быстрые фильтры</h3>
-      <div class="store-list">
-        <div class="store-item" onclick="showToast('Фильтр: цена снизилась')">
-          <div class="store-icon" style="background:rgba(0,184,148,0.15);color:var(--green);font-size:14px;">&#9660;</div>
-          <div class="store-meta">
-            <span class="store-name">Цена снизилась</span>
-            <span class="store-count">7 товаров</span>
-          </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">Быстрые фильтры</div>
+    <div class="store-list">
+      <div class="filter-item" id="filterDown" onclick="setQuickFilter('down')">
+        <div class="filter-icon" style="color:var(--green);">↓</div>
+        <div class="store-meta">
+          <span class="store-name">Цена снизилась</span>
+          <span class="store-count" id="countDown">0 товаров</span>
         </div>
-        <div class="store-item" onclick="showToast('Фильтр: цена выросла')">
-          <div class="store-icon" style="background:rgba(225,112,85,0.15);color:var(--red);font-size:14px;">&#9650;</div>
-          <div class="store-meta">
-            <span class="store-name">Цена выросла</span>
-            <span class="store-count">4 товара</span>
-          </div>
-        </div>
-        <div class="store-item" onclick="showToast('Фильтр: недоступные')">
-          <div class="store-icon" style="background:rgba(139,143,167,0.15);color:var(--text2);font-size:14px;">!</div>
-          <div class="store-meta">
-            <span class="store-name">Нет в наличии</span>
-            <span class="store-count">2 товара</span>
-          </div>
+      </div>
+      <div class="filter-item" id="filterUp" onclick="setQuickFilter('up')">
+        <div class="filter-icon" style="color:var(--red);">↑</div>
+        <div class="store-meta">
+          <span class="store-name">Цена выросла</span>
+          <span class="store-count" id="countUp">0 товаров</span>
         </div>
       </div>
     </div>
@@ -1025,16 +824,23 @@
     <!-- Search -->
     <div class="search-bar">
       <div class="search-input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="search-input" placeholder="Поиск по названию, SKU или URL..." id="searchInput" oninput="filterTable()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" class="search-input" placeholder="Поиск по названию или SKU..." id="searchInput" oninput="filterTable()">
       </div>
-      <button class="btn btn-primary" onclick="startParsing()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      <button class="btn" onclick="startParsing()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
         Обновить цены
       </button>
-      <button class="btn btn-secondary" onclick="showToast('Экспорт в CSV')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Экспорт
+      <button class="btn" onclick="exportCSV()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Excel
       </button>
     </div>
 
@@ -1043,74 +849,70 @@
       <div class="spinner"></div>
       <div class="progress-wrap">
         <div class="progress-text">
-          <span id="progressLabel">Парсинг цен...</span>
+          <span id="progressLabel">Парсинг WB...</span>
           <span id="progressPercent">0%</span>
         </div>
         <div class="progress-bar">
           <div class="progress-fill" id="progressFill"></div>
         </div>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="stopParsing()">Стоп</button>
+      <button class="btn btn-sm" onclick="stopParsing()">Стоп</button>
     </div>
 
     <!-- Stats -->
-    <div class="stats-row">
+    <div class="stats-row" id="statsRow">
       <div class="stat-card">
         <div class="stat-label">Отслеживается</div>
-        <div class="stat-value">24</div>
-        <div class="stat-change up">+3 за неделю</div>
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-sub">позиций на WB</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Цена снизилась</div>
-        <div class="stat-value" style="color:var(--green)">7</div>
-        <div class="stat-change down">&#9660; средн. -12%</div>
+        <div class="stat-value" style="color:var(--green)" id="statDown">0</div>
+        <div class="stat-sub" id="statDownPct">средн. —</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Цена выросла</div>
-        <div class="stat-value" style="color:var(--red)">4</div>
-        <div class="stat-change up">&#9650; средн. +8%</div>
+        <div class="stat-value" style="color:var(--red)" id="statUp">0</div>
+        <div class="stat-sub" id="statUpPct">средн. —</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Последнее обновление</div>
-        <div class="stat-value" style="font-size:16px">14:32</div>
-        <div class="stat-change" style="color:var(--text2)">сегодня</div>
+        <div class="stat-value" style="font-size:16px" id="statTime">—</div>
+        <div class="stat-sub">интервал: 3 ч</div>
       </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Category chips -->
     <div class="filter-row">
-      <button class="chip active" onclick="toggleChip(this)">Все</button>
-      <button class="chip" onclick="toggleChip(this)">Электроника</button>
-      <button class="chip" onclick="toggleChip(this)">Одежда</button>
-      <button class="chip" onclick="toggleChip(this)">Бытовая техника</button>
-      <button class="chip" onclick="toggleChip(this)">Красота</button>
-      <button class="chip" onclick="toggleChip(this)">Продукты</button>
+      <button class="chip active" onclick="toggleChip(this)" data-cat="">Все</button>
+      <button class="chip" onclick="toggleChip(this)" data-cat="Электроника">Электроника</button>
+      <button class="chip" onclick="toggleChip(this)" data-cat="Одежда">Одежда</button>
+      <button class="chip" onclick="toggleChip(this)" data-cat="Бытовая техника">Бытовая техника</button>
+      <button class="chip" onclick="toggleChip(this)" data-cat="Красота">Красота</button>
+      <button class="chip" onclick="toggleChip(this)" data-cat="Продукты">Продукты</button>
     </div>
 
     <!-- Table -->
     <div class="table-wrap">
       <div class="table-header">
-        <span class="table-title">Отслеживаемые товары</span>
+        <span class="table-title">Отслеживаемые товары · WB</span>
         <div class="table-actions">
-          <button class="btn btn-secondary btn-sm" onclick="showToast('Настройки таблицы')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </button>
+          <button class="btn btn-sm" onclick="exportCSV()">CSV ↓</button>
         </div>
       </div>
       <table>
         <thead>
           <tr>
             <th>Товар</th>
-            <th>Магазин</th>
             <th>Текущая цена</th>
-            <th>Целевая цена</th>
+            <th>Мин. цена</th>
             <th>Изменение</th>
-            <th>Проверка</th>
+            <th>Обновление</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="tableBody">
-        </tbody>
+        <tbody id="tableBody"></tbody>
       </table>
     </div>
   </main>
@@ -1128,46 +930,37 @@
 
   <div class="drawer-price-block">
     <div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Текущая цена</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Текущая цена</div>
       <div class="drawer-price" id="drawerPrice">—</div>
     </div>
-    <div class="drawer-delta" id="drawerDelta">
+    <div class="drawer-delta">
       <div class="drawer-delta-value" id="drawerDeltaValue">—</div>
       <div class="drawer-delta-pct" id="drawerDeltaPct">—</div>
     </div>
   </div>
 
   <div class="drawer-section">
-    <div class="drawer-section-label">История цен</div>
-    <svg class="chart-svg" id="drawerChart" viewBox="0 0 340 120" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#6c5ce7" stop-opacity="0.3"/>
-          <stop offset="100%" stop-color="#6c5ce7" stop-opacity="0"/>
-        </linearGradient>
-      </defs>
-    </svg>
+    <div class="drawer-section-label">История цен · 180 дней</div>
+    <svg class="chart-svg" id="drawerChart" viewBox="0 0 340 110" preserveAspectRatio="none"></svg>
     <div class="chart-x-labels">
-      <span>−30 дн</span><span>−14 дн</span><span>−7 дн</span><span>Сейчас</span>
+      <span>−180 дн</span><span>−90 дн</span><span>−30 дн</span><span>Сейчас</span>
     </div>
   </div>
 
   <div class="drawer-section">
-    <div class="drawer-section-label">Цены по магазинам</div>
-    <div id="drawerStorePrices"></div>
+    <div class="drawer-section-label">Цены у продавцов WB</div>
+    <div id="drawerSellerPrices"></div>
   </div>
 
   <div class="drawer-actions">
-    <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Открытие страницы товара')">↗ Открыть</button>
-    <button class="btn btn-secondary btn-sm" style="flex:1" onclick="showToast('Редактирование товара')">✎ Изменить</button>
-    <button class="btn btn-secondary btn-sm" style="color:var(--red)" onclick="activeProductIndex !== null && deleteProduct(activeProductIndex)">✕</button>
+    <button class="btn btn-sm" style="flex:1" id="drawerOpenBtn">↗ Открыть WB</button>
+    <button class="btn btn-sm btn-danger" onclick="activeProductIndex !== null && deleteProduct(activeProductIndex)">✕</button>
   </div>
 </div>
 
 <!-- Settings Modal -->
 <div class="settings-overlay" id="settingsOverlay" onclick="closeSettingsOnOverlay(event)">
   <div class="settings-modal" onclick="event.stopPropagation()">
-
     <div class="settings-modal-header">
       <div>
         <div class="settings-modal-title">Настройки</div>
@@ -1176,142 +969,142 @@
       <button class="drawer-close" onclick="closeSettings()">✕</button>
     </div>
 
-    <!-- Section: Парсинг -->
+    <!-- Парсинг -->
     <div class="settings-section">
       <div class="settings-section-label">Парсинг</div>
-
       <div class="settings-row">
         <div>
           <div class="settings-row-label">Интервал обновления</div>
-          <div class="settings-row-hint">Как часто проверять цены</div>
+          <div class="settings-row-hint">Как часто проверять цены на WB</div>
         </div>
         <div class="pill-group" id="intervalPills">
-          <button class="pill active" data-value="30" onclick="selectPill(this, 'intervalPills')">30 мин</button>
-          <button class="pill" data-value="60" onclick="selectPill(this, 'intervalPills')">1 ч</button>
-          <button class="pill" data-value="360" onclick="selectPill(this, 'intervalPills')">6 ч</button>
-          <button class="pill" data-value="1440" onclick="selectPill(this, 'intervalPills')">24 ч</button>
+          <button class="pill" data-value="60" onclick="selectPill(this,'intervalPills')">1 ч</button>
+          <button class="pill active" data-value="180" onclick="selectPill(this,'intervalPills')">3 ч</button>
+          <button class="pill" data-value="360" onclick="selectPill(this,'intervalPills')">6 ч</button>
+          <button class="pill" data-value="1440" onclick="selectPill(this,'intervalPills')">24 ч</button>
         </div>
       </div>
-
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">Автозапуск парсера</div>
-          <div class="settings-row-hint">Запускать по расписанию</div>
+          <div class="settings-row-label">Автозапуск</div>
+          <div class="settings-row-hint">Запускать парсер по расписанию</div>
         </div>
         <div class="toggle on" id="toggleAutostart" onclick="toggleSetting(this)"></div>
       </div>
     </div>
 
-    <!-- Section: Уведомления -->
+    <!-- Уведомления -->
     <div class="settings-section">
       <div class="settings-section-label">Уведомления</div>
-
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">Порог снижения цены</div>
-          <div class="settings-row-hint">Уведомлять при падении на</div>
+          <div class="settings-row-label">Порог изменения цены</div>
+          <div class="settings-row-hint">Уведомлять при отклонении на</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <input type="number" id="thresholdInput" min="1" max="99" value="5"
-            style="width:52px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:monospace;font-size:13px;text-align:center;outline:none;">
-          <span style="font-size:12px;color:var(--text2)">%</span>
+            style="width:50px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;text-align:center;outline:none;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">%</span>
         </div>
       </div>
-
-      <div class="settings-row">
+      <div class="settings-row" style="align-items:flex-start;">
         <div>
-          <div class="settings-row-label">Push-уведомления</div>
-          <div class="settings-row-hint">Подключается на шаге 3</div>
+          <div class="settings-row-label">Email</div>
+          <div class="settings-row-hint">Уведомления на почту</div>
         </div>
-        <div class="toggle" id="togglePush" style="opacity:0.4;pointer-events:none"></div>
+        <input type="email" id="notifyEmail" class="form-input"
+          placeholder="you@example.com"
+          style="width:200px;font-size:12px;padding:6px 10px;">
+      </div>
+      <div class="settings-row" style="align-items:flex-start;">
+        <div>
+          <div class="settings-row-label">Telegram</div>
+          <div class="settings-row-hint">Chat ID или @username</div>
+        </div>
+        <input type="text" id="notifyTg" class="form-input"
+          placeholder="@username или 123456"
+          style="width:200px;font-size:12px;padding:6px 10px;">
       </div>
     </div>
 
-    <!-- Section: Данные -->
+    <!-- Данные -->
     <div class="settings-section">
-      <div class="settings-section-label">Данные</div>
-
+      <div class="settings-section-label">История цен</div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">Хранить историю</div>
-          <div class="settings-row-hint">Глубина истории цен</div>
+          <div class="settings-row-label">Глубина истории</div>
+          <div class="settings-row-hint">Хранить данные за период</div>
         </div>
         <div class="pill-group" id="historyPills">
-          <button class="pill" data-value="7" onclick="selectPill(this, 'historyPills')">7 дн</button>
-          <button class="pill active" data-value="30" onclick="selectPill(this, 'historyPills')">30 дн</button>
-          <button class="pill" data-value="90" onclick="selectPill(this, 'historyPills')">90 дн</button>
+          <button class="pill" data-value="30" onclick="selectPill(this,'historyPills')">30 дн</button>
+          <button class="pill" data-value="90" onclick="selectPill(this,'historyPills')">90 дн</button>
+          <button class="pill active" data-value="180" onclick="selectPill(this,'historyPills')">180 дн</button>
         </div>
-      </div>
-
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label">Экспорт данных</div>
-          <div class="settings-row-hint">Выгрузить все цены в файл</div>
-        </div>
-        <button class="btn btn-secondary btn-sm" onclick="showToast('Экспорт CSV — подключается на шаге 4')">CSV ↓</button>
       </div>
     </div>
 
     <div class="settings-footer">
-      <button class="btn btn-secondary" onclick="closeSettings()">Отмена</button>
+      <button class="btn" onclick="closeSettings()">Отмена</button>
       <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
     </div>
   </div>
 </div>
 
-<!-- Add product modal -->
+<!-- Add Product Modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
-    <h2>Добавить товар для отслеживания</h2>
-    <div class="form-group">
-      <label>Название товара <span style="color:var(--red)">*</span></label>
-      <input type="text" class="form-input" placeholder="Например: iPhone 15 Pro 256GB" id="nameInput">
+    <div class="modal-header">
+      <span class="modal-title">Добавить товар</span>
+      <button class="drawer-close" onclick="closeModal()">✕</button>
     </div>
-    <div class="form-group">
-      <label>URL товара</label>
-      <input type="text" class="form-input" placeholder="https://www.wildberries.ru/catalog/..." id="urlInput">
-    </div>
-    <div class="form-row">
+    <div class="modal-body">
+      <!-- Feed import -->
+      <div class="feed-box">
+        <div class="feed-box-label">↓ Импорт через фид WB</div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label class="form-label">URL фида</label>
+          <input type="text" class="form-input" id="feedInput"
+            placeholder="https://www.wildberries.ru/catalog/...">
+          <div class="form-hint">Вставьте ссылку на категорию, бренд или поиск WB — товары загрузятся автоматически</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="importFeed()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Загрузить из фида
+        </button>
+      </div>
+
+      <div class="divider-or">или вручную</div>
+
       <div class="form-group">
-        <label>Магазин</label>
-        <select class="form-select" id="storeSelect">
-          <option value="">Автоопределение</option>
-          <option>Wildberries</option>
-          <option>Ozon</option>
-          <option>Яндекс Маркет</option>
-          <option>DNS</option>
-          <option>МВидео</option>
-        </select>
+        <label class="form-label">Название товара <span style="color:var(--red)">*</span></label>
+        <input type="text" class="form-input" placeholder="iPhone 15 Pro 256GB" id="nameInput">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">SKU / Артикул</label>
+          <input type="text" class="form-input" placeholder="APL-15P-256" id="skuInput">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Категория</label>
+          <select class="form-select" id="catInput">
+            <option value="Электроника">Электроника</option>
+            <option value="Одежда">Одежда</option>
+            <option value="Бытовая техника">Бытовая техника</option>
+            <option value="Красота">Красота</option>
+            <option value="Продукты">Продукты</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
-        <label>Категория</label>
-        <select class="form-select">
-          <option>Электроника</option>
-          <option>Одежда</option>
-          <option>Бытовая техника</option>
-          <option>Красота</option>
-          <option>Продукты</option>
-        </select>
+        <label class="form-label">Целевая цена (₽)</label>
+        <input type="number" class="form-input" placeholder="50000" id="targetInput">
+        <div class="form-hint">Уведомим, когда цена достигнет этого значения</div>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Интервал проверки</label>
-        <select class="form-select">
-          <option>Каждые 30 минут</option>
-          <option>Каждый час</option>
-          <option selected>Каждые 3 часа</option>
-          <option>Каждые 6 часов</option>
-          <option>Раз в день</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Уведомлять при снижении на</label>
-        <input type="text" class="form-input" placeholder="5%" value="5%">
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Отмена</button>
       <button class="btn btn-primary" onclick="addProduct()">Добавить</button>
     </div>
   </div>
@@ -1321,133 +1114,178 @@
 <div class="toast" id="toast"></div>
 
 <script>
-function assert(condition, msg) {
-  if (!condition) console.error('FAIL:', msg);
-  else console.log('PASS:', msg);
-}
-
 function esc(str) {
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// ── State ──
 let activeProductIndex = null;
 let drawerOpen = false;
+let currentStore = 'all';
+let currentQuickFilter = 'all'; // 'all' | 'down' | 'up'
+let currentCat = '';
+let parsingInterval = null;
 
-const products = [
-  { name: 'iPhone 15 Pro 256GB', sku: 'APL-15P-256', store: 'Wildberries', storeKey: 'wb', icon: 'W', color: '#6c5ce7', emoji: '📱', price: 89990, oldPrice: 94990, minPrice: 85990, targetPrice: 81690, change: -5.3, time: '2 мин' },
-  { name: 'Samsung Galaxy S24 Ultra', sku: 'SAM-S24U-256', store: 'Ozon', storeKey: 'ozon', icon: 'O', color: '#0984e3', emoji: '📱', price: 99990, oldPrice: 104990, minPrice: 94990, targetPrice: 90240, change: -4.8, time: '5 мин' },
-  { name: 'Sony WH-1000XM5', sku: 'SNY-WH5-BLK', store: 'Яндекс Маркет', storeKey: 'ym', icon: 'Я', color: '#fdcb6e', emoji: '🎧', price: 27490, oldPrice: 25990, minPrice: 23990, targetPrice: 22790, change: 5.8, time: '12 мин' },
-  { name: 'MacBook Air M3 16/512', sku: 'APL-MBA-M3', store: 'DNS', storeKey: 'dns', icon: 'D', color: '#e17055', emoji: '💻', price: 134990, oldPrice: 139990, minPrice: 129990, targetPrice: 123490, change: -3.6, time: '8 мин' },
-  { name: 'Dyson V15 Detect', sku: 'DYS-V15-DET', store: 'МВидео', storeKey: 'mvideo', icon: 'M', color: '#00b894', emoji: '🔌', price: 54990, oldPrice: 54990, minPrice: 49990, targetPrice: 47490, change: 0, time: '15 мин' },
-  { name: 'Nike Air Max 90', sku: 'NK-AM90-WHT', store: 'Wildberries', storeKey: 'wb', icon: 'W', color: '#6c5ce7', emoji: '👟', price: 8990, oldPrice: 11990, minPrice: 7990, targetPrice: 7590, change: -25.0, time: '3 мин' },
-  { name: 'PlayStation 5 Slim', sku: 'SNY-PS5-SLM', store: 'Ozon', storeKey: 'ozon', icon: 'O', color: '#0984e3', emoji: '🎮', price: 47990, oldPrice: 44990, minPrice: 42990, targetPrice: 40840, change: 6.7, time: '20 мин' },
-  { name: 'Xiaomi Robot Vacuum X10+', sku: 'XMI-RBV-X10', store: 'Яндекс Маркет', storeKey: 'ym', icon: 'Я', color: '#fdcb6e', emoji: '🤖', price: 32990, oldPrice: 36990, minPrice: 29990, targetPrice: 28490, change: -10.8, time: '7 мин' },
-  { name: 'Samsung 65" OLED 4K', sku: 'SAM-TV65-OLED', store: 'DNS', storeKey: 'dns', icon: 'D', color: '#e17055', emoji: '📺', price: 149990, oldPrice: 159990, minPrice: 139990, targetPrice: 132990, change: -6.3, time: '25 мин' },
-  { name: 'Кроссовки Adidas Ultraboost', sku: 'ADD-UB-BLK', store: 'Wildberries', storeKey: 'wb', icon: 'W', color: '#6c5ce7', emoji: '👟', price: 12490, oldPrice: 11490, minPrice: 9990, targetPrice: 9490, change: 8.7, time: '1 мин' },
+// ── Products ──
+const DEFAULT_PRODUCTS = [
+  { name: 'iPhone 15 Pro 256GB', sku: 'APL-15P-256', cat: 'Электроника', emoji: '📱', price: 89990, oldPrice: 94990, minPrice: 85990, targetPrice: 81690, change: -5.3, time: '2 мин', url: 'https://www.wildberries.ru' },
+  { name: 'Samsung Galaxy S24 Ultra', sku: 'SAM-S24U-256', cat: 'Электроника', emoji: '📱', price: 99990, oldPrice: 104990, minPrice: 94990, targetPrice: 90240, change: -4.8, time: '5 мин', url: '' },
+  { name: 'Sony WH-1000XM5', sku: 'SNY-WH5-BLK', cat: 'Электроника', emoji: '🎧', price: 27490, oldPrice: 25990, minPrice: 23990, targetPrice: 22790, change: 5.8, time: '12 мин', url: '' },
+  { name: 'MacBook Air M3 16/512', sku: 'APL-MBA-M3', cat: 'Электроника', emoji: '💻', price: 134990, oldPrice: 139990, minPrice: 129990, targetPrice: 123490, change: -3.6, time: '8 мин', url: '' },
+  { name: 'Nike Air Max 90 White', sku: 'NK-AM90-WHT', cat: 'Одежда', emoji: '👟', price: 8990, oldPrice: 11990, minPrice: 7990, targetPrice: 7590, change: -25.0, time: '3 мин', url: '' },
+  { name: 'PlayStation 5 Slim', sku: 'SNY-PS5-SLM', cat: 'Электроника', emoji: '🎮', price: 47990, oldPrice: 44990, minPrice: 42990, targetPrice: 40840, change: 6.7, time: '20 мин', url: '' },
+  { name: 'Xiaomi Robot Vacuum X10+', sku: 'XMI-RBV-X10', cat: 'Бытовая техника', emoji: '🤖', price: 32990, oldPrice: 36990, minPrice: 29990, targetPrice: 28490, change: -10.8, time: '7 мин', url: '' },
+  { name: 'Dyson V15 Detect', sku: 'DYS-V15-DET', cat: 'Бытовая техника', emoji: '🔌', price: 54990, oldPrice: 54990, minPrice: 49990, targetPrice: 47490, change: 0, time: '15 мин', url: '' },
+  { name: 'Кроссовки Adidas Ultraboost', sku: 'ADD-UB-BLK', cat: 'Одежда', emoji: '👟', price: 12490, oldPrice: 11490, minPrice: 9990, targetPrice: 9490, change: 8.7, time: '1 мин', url: '' },
+  { name: 'Крем Vichy LiftActiv', sku: 'VCH-LIFT-50', cat: 'Красота', emoji: '🧴', price: 2990, oldPrice: 3490, minPrice: 2490, targetPrice: 2200, change: -14.3, time: '30 мин', url: '' },
 ];
 
+let products = (() => {
+  try {
+    const raw = localStorage.getItem('pp_products');
+    return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+  } catch { return JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)); }
+})();
+
+function saveProducts() {
+  localStorage.setItem('pp_products', JSON.stringify(products));
+}
+
+// ── WB Sellers mock ──
+const WB_SELLERS = [
+  { name: 'Продавец WB Official', mult: 1.00 },
+  { name: 'ТехноМаркет', mult: 1.03 },
+  { name: 'GadgetPro', mult: 1.06 },
+  { name: 'МегаТехно', mult: 1.09 },
+  { name: 'Электроника24', mult: 1.13 },
+];
+
+// ── Format ──
+function formatPrice(n) {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0') + '\u00A0₽';
+}
+
+// ── History 180 pts ──
 function generateMockHistory(currentPrice) {
   const points = [];
-  let price = Math.round(currentPrice * 1.08);
-  for (let i = 0; i < 30; i++) {
-    const delta = (Math.random() - 0.55) * 0.03;
-    price = Math.round(price * (1 + delta));
-    points.push(price);
+  let p = Math.round(currentPrice * 1.12);
+  for (let i = 0; i < 180; i++) {
+    const d = (Math.random() - 0.52) * 0.025;
+    p = Math.round(p * (1 + d));
+    points.push(p);
   }
-  points[29] = currentPrice;
+  points[179] = currentPrice;
   return points;
 }
 
-function renderChart(svgEl, priceHistory) {
-  const W = 340, H = 120, PAD = 8;
-  const min = Math.min(...priceHistory) - PAD;
-  const max = Math.max(...priceHistory) + PAD;
-  const xs = priceHistory.map((_, i) => (i / (priceHistory.length - 1)) * W);
-  const ys = priceHistory.map(v => H - ((v - min) / (max - min)) * H);
-
-  const linePoints = xs.map((x, i) => `${x},${ys[i]}`).join(' ');
-  const areaPoints = `${xs[0]},${H} ` + linePoints + ` ${xs[xs.length-1]},${H}`;
-
+// ── Chart ──
+function renderChart(svgEl, history) {
+  const W = 340, H = 110, PAD = 6;
+  const min = Math.min(...history) - PAD;
+  const max = Math.max(...history) + PAD;
+  const xs = history.map((_, i) => (i / (history.length - 1)) * W);
+  const ys = history.map(v => H - ((v - min) / (max - min)) * H);
+  const line = xs.map((x, i) => `${x},${ys[i]}`).join(' ');
+  const area = `${xs[0]},${H} ` + line + ` ${xs[xs.length-1]},${H}`;
   svgEl.innerHTML = `
     <defs>
-      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#6c5ce7" stop-opacity="0.3"/>
-        <stop offset="100%" stop-color="#6c5ce7" stop-opacity="0"/>
+      <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00f5ff" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#00f5ff" stop-opacity="0"/>
       </linearGradient>
     </defs>
-    <polyline points="${areaPoints}" fill="url(#chartGrad)" stroke="none"/>
-    <polyline points="${linePoints}" fill="none" stroke="#6c5ce7" stroke-width="1.5" stroke-linejoin="round"/>
-    <circle cx="${xs[xs.length-1]}" cy="${ys[ys.length-1]}" r="3" fill="#6c5ce7"/>
+    <polyline points="${area}" fill="url(#cg)" stroke="none"/>
+    <polyline points="${line}" fill="none" stroke="#00f5ff" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="${xs[xs.length-1]}" cy="${ys[ys.length-1]}" r="3" fill="#00f5ff"/>
   `;
 }
 
-const STORE_PRICES = {
-  wb:     { name: 'Wildberries',   mult: 1.00 },
-  ozon:   { name: 'Ozon',          mult: 1.05 },
-  ym:     { name: 'Яндекс Маркет', mult: 1.07 },
-  dns:    { name: 'DNS',           mult: 1.03 },
-  mvideo: { name: 'МВидео',        mult: 1.09 },
-};
+// ── Stats ──
+function updateStats() {
+  const total = products.length;
+  const down = products.filter(p => p.change < 0);
+  const up   = products.filter(p => p.change > 0);
 
-let currentStore = 'all';
-let parsingInterval = null;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDown').textContent  = down.length;
+  document.getElementById('statUp').textContent    = up.length;
 
-function formatPrice(n) {
-  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+  const avgDown = down.length ? (down.reduce((s, p) => s + p.change, 0) / down.length).toFixed(1) : null;
+  const avgUp   = up.length   ? (up.reduce((s, p) => s + p.change, 0) / up.length).toFixed(1)   : null;
+  document.getElementById('statDownPct').textContent = avgDown ? `средн. ${avgDown}%` : 'средн. —';
+  document.getElementById('statUpPct').textContent   = avgUp   ? `средн. +${avgUp}%`  : 'средн. —';
+
+  const now = new Date();
+  document.getElementById('statTime').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+  // Sidebar counts
+  document.getElementById('countAll').textContent  = total + ' позиций';
+  document.getElementById('countWB').textContent   = total + ' товаров';
+  document.getElementById('countDown').textContent = down.length + ' товаров';
+  document.getElementById('countUp').textContent   = up.length + ' товаров';
 }
 
-function renderTable(filter = '') {
+// ── Table ──
+function renderTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
   const tbody = document.getElementById('tableBody');
-  const filtered = products.filter(p => {
-    const matchStore = currentStore === 'all' || p.storeKey === currentStore;
-    const matchSearch = !filter || p.name.toLowerCase().includes(filter) || p.sku.toLowerCase().includes(filter);
-    return matchStore && matchSearch;
+
+  const filtered = products.filter((p, i) => {
+    const matchStore  = currentStore === 'all' || currentStore === 'wb';
+    const matchSearch = !search || p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search);
+    const matchFilter = currentQuickFilter === 'all'
+      || (currentQuickFilter === 'down' && p.change < 0)
+      || (currentQuickFilter === 'up'   && p.change > 0);
+    const matchCat    = !currentCat || p.cat === currentCat;
+    return matchStore && matchSearch && matchFilter && matchCat;
   });
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `
-      <tr><td colspan="7">
-        <div class="empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <p>Нет товаров. <button class="btn btn-primary btn-sm" onclick="openModal()" style="margin-left:8px">Добавить первый</button></p>
-        </div>
-      </td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6">
+      <div class="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <p>Нет товаров</p>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">+ Добавить первый</button>
+      </div>
+    </td></tr>`;
     return;
   }
 
-  tbody.innerHTML = filtered.map((p) => {
+  tbody.innerHTML = filtered.map(p => {
     const idx = products.indexOf(p);
-    const changeClass = p.change < 0 ? 'down' : p.change > 0 ? 'up' : 'same';
-    const changeText = p.change < 0 ? `${p.change}%` : p.change > 0 ? `+${p.change}%` : '0%';
-    const arrow = p.change < 0 ? '&#9660; ' : p.change > 0 ? '&#9650; ' : '';
-    const isActive = idx === activeProductIndex;
-
-    return `<tr class="${isActive ? 'active-row' : ''}" onclick="openDrawer(${idx})" style="cursor:pointer">
+    const cls  = p.change < 0 ? 'down' : p.change > 0 ? 'up' : 'same';
+    const sign = p.change < 0 ? '↓ ' : p.change > 0 ? '↑ ' : '';
+    const txt  = p.change !== 0 ? sign + Math.abs(p.change) + '%' : '0%';
+    const active = idx === activeProductIndex;
+    return `<tr class="${active ? 'active-row' : ''}" onclick="openDrawer(${idx})">
       <td>
         <div class="product-cell">
           <div class="product-img">${p.emoji}</div>
-          <div class="product-info">
-            <span class="product-title">${esc(p.name)}</span>
-            <span class="product-sku">${esc(p.sku)}</span>
+          <div>
+            <div class="product-title">${esc(p.name)}</div>
+            <div class="product-sku">${esc(p.sku)}</div>
           </div>
         </div>
       </td>
-      <td><span class="store-tag" style="color:${p.color};border:1px solid ${p.color}33;background:${p.color}15">${p.store}</span></td>
-      <td><span class="price">${formatPrice(p.price)}</span>${p.oldPrice !== p.price ? `<span class="price-old">${formatPrice(p.oldPrice)}</span>` : ''}</td>
-      <td style="color:var(--text2);font-family:monospace">${formatPrice(p.targetPrice)}</td>
-      <td><span class="change-badge ${changeClass}">${arrow}${changeText}</span></td>
-      <td><span class="last-check">${p.time} назад</span></td>
+      <td>
+        <span class="price">${formatPrice(p.price)}</span>
+        ${p.oldPrice !== p.price ? `<span class="price-old">${formatPrice(p.oldPrice)}</span>` : ''}
+      </td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">${formatPrice(p.minPrice)}</td>
+      <td><span class="change-badge ${cls}">${txt}</span></td>
+      <td><span class="last-check">${esc(p.time)} назад</span></td>
       <td>
         <div class="row-actions" onclick="event.stopPropagation()">
           <button class="icon-btn" title="Удалить" onclick="deleteProduct(${idx})">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
           </button>
         </div>
       </td>
@@ -1455,205 +1293,261 @@ function renderTable(filter = '') {
   }).join('');
 }
 
-function deleteProduct(idx) {
-  products.splice(idx, 1);
-  if (activeProductIndex === idx) {
-    closeDrawer();
-  } else if (activeProductIndex !== null && idx < activeProductIndex) {
-    activeProductIndex--;
-  }
-  renderTable(document.getElementById('searchInput').value.toLowerCase());
-  showToast('Товар удалён');
+function filterTable() { renderTable(); }
+
+// ── Store / Filter ──
+function selectStore(el, key) {
+  document.querySelectorAll('.store-item:not(.disabled)').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  currentStore = key;
+  renderTable();
 }
 
+function setQuickFilter(type) {
+  const el = document.getElementById('filter' + (type === 'down' ? 'Down' : 'Up'));
+  if (currentQuickFilter === type) {
+    currentQuickFilter = 'all';
+    el.classList.remove('active');
+  } else {
+    document.querySelectorAll('.filter-item').forEach(f => f.classList.remove('active'));
+    currentQuickFilter = type;
+    el.classList.add('active');
+  }
+  renderTable();
+}
+
+function toggleChip(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentCat = el.dataset.cat || '';
+  renderTable();
+}
+
+// ── Drawer ──
 function openDrawer(idx) {
   const p = products[idx];
   activeProductIndex = idx;
   drawerOpen = true;
 
-  // Header
   document.getElementById('drawerTitle').textContent = p.name;
-  document.getElementById('drawerSubtitle').textContent = `${p.sku} · ${p.store}`;
-
-  // Price block
+  document.getElementById('drawerSubtitle').textContent = p.sku + ' · WB';
   document.getElementById('drawerPrice').textContent = formatPrice(p.price);
-  const deltaRub = p.price - p.oldPrice;
-  const sign = deltaRub <= 0 ? '▼' : '▲';
-  const color = deltaRub <= 0 ? 'var(--green)' : 'var(--red)';
-  const deltaVal = document.getElementById('drawerDeltaValue');
-  const deltaPct = document.getElementById('drawerDeltaPct');
-  deltaVal.textContent = `${sign} ${Math.abs(deltaRub).toLocaleString('ru')} ₽`;
-  deltaVal.style.color = color;
-  deltaPct.textContent = `${p.change}% за 7 дней`;
-  deltaPct.style.color = color;
+
+  const delta = p.price - p.oldPrice;
+  const color = delta <= 0 ? 'var(--green)' : 'var(--red)';
+  const sign  = delta <= 0 ? '▼' : '▲';
+  const dv = document.getElementById('drawerDeltaValue');
+  const dp = document.getElementById('drawerDeltaPct');
+  dv.textContent = sign + ' ' + formatPrice(Math.abs(delta));
+  dv.style.color = color;
+  dp.textContent = p.change + '% за период';
+  dp.style.color = color;
 
   // Chart
-  const history = generateMockHistory(p.price);
-  renderChart(document.getElementById('drawerChart'), history);
+  renderChart(document.getElementById('drawerChart'), generateMockHistory(p.price));
 
-  // Store prices
-  const storesHtml = Object.entries(STORE_PRICES).map(([key, s]) => {
-    const storePrice = Math.round(p.price * s.mult);
-    const isBest = key === p.storeKey;
-    return `<div class="store-price-row ${isBest ? 'best' : ''}">
-      <span class="store-price-name">${s.name}</span>
-      <span class="store-price-val">${formatPrice(storePrice)}</span>
+  // Sellers
+  const html = WB_SELLERS.map((s, i) => {
+    const sp = Math.round(p.price * s.mult);
+    const best = i === 0;
+    return `<div class="seller-price-row ${best ? 'best' : ''}">
+      <span class="seller-price-name">${esc(s.name)}</span>
+      <span class="seller-price-val">${formatPrice(sp)}</span>
     </div>`;
   }).join('');
-  document.getElementById('drawerStorePrices').innerHTML = storesHtml;
+  document.getElementById('drawerSellerPrices').innerHTML = html;
 
-  // Open
+  // Open button
+  const openBtn = document.getElementById('drawerOpenBtn');
+  if (p.url) {
+    openBtn.onclick = () => window.open(p.url, '_blank');
+    openBtn.style.opacity = '1';
+  } else {
+    openBtn.onclick = () => showToast('URL не указан');
+    openBtn.style.opacity = '0.5';
+  }
+
   document.getElementById('productDrawer').classList.add('open');
-  renderTable(document.getElementById('searchInput').value.toLowerCase());
+  renderTable();
 }
+
 function closeDrawer() {
   activeProductIndex = null;
   drawerOpen = false;
   document.getElementById('productDrawer').classList.remove('open');
-  renderTable(document.getElementById('searchInput').value.toLowerCase());
+  renderTable();
 }
 
-function selectStore(el, key) {
-  document.querySelectorAll('.store-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  currentStore = key;
-  renderTable(document.getElementById('searchInput').value.toLowerCase());
-}
-
-function filterTable() {
-  renderTable(document.getElementById('searchInput').value.toLowerCase());
-}
-
-function openModal() {
-  document.getElementById('modalOverlay').classList.add('active');
-}
-
-function closeModal(e) {
-  if (!e || e.target === document.getElementById('modalOverlay')) {
-    document.getElementById('modalOverlay').classList.remove('active');
-  }
+// ── Product CRUD ──
+function deleteProduct(idx) {
+  products.splice(idx, 1);
+  saveProducts();
+  if (activeProductIndex === idx) closeDrawer();
+  else if (activeProductIndex !== null && idx < activeProductIndex) activeProductIndex--;
+  updateStats();
+  renderTable();
+  showToast('Товар удалён');
 }
 
 function addProduct() {
-  const name = document.getElementById('nameInput').value.trim();
-  const url = document.getElementById('urlInput').value.trim();
-  const store = document.getElementById('storeSelect').value || 'Wildberries';
+  const name   = document.getElementById('nameInput').value.trim();
+  const sku    = document.getElementById('skuInput').value.trim() || 'SKU-' + Date.now().toString().slice(-4);
+  const cat    = document.getElementById('catInput').value;
+  const target = parseInt(document.getElementById('targetInput').value) || 0;
 
-  if (!name) {
-    showToast('Введите название товара');
+  if (!name) { showToast('Введите название товара'); return; }
+
+  const mockPrice = Math.round(Math.random() * 50000 + 3000);
+  products.push({
+    name, sku, cat,
+    emoji: '📦',
+    price: mockPrice, oldPrice: mockPrice, minPrice: mockPrice,
+    targetPrice: target || Math.round(mockPrice * 0.9),
+    change: 0,
+    time: 'только что',
+    url: '',
+  });
+
+  saveProducts();
+  closeModal();
+  updateStats();
+  renderTable();
+  showToast(`"${name}" добавлен`);
+  document.getElementById('nameInput').value = '';
+  document.getElementById('skuInput').value  = '';
+  document.getElementById('targetInput').value = '';
+}
+
+// ── Feed import (mock) ──
+function importFeed() {
+  const url = document.getElementById('feedInput').value.trim();
+  if (!url || !url.includes('wildberries')) {
+    showToast('Введите URL страницы Wildberries');
     return;
   }
 
-  const storeMap = {
-    'Wildberries': { key: 'wb', icon: 'W', color: '#6c5ce7' },
-    'Ozon': { key: 'ozon', icon: 'O', color: '#0984e3' },
-    'Яндекс Маркет': { key: 'ym', icon: 'Я', color: '#fdcb6e' },
-    'DNS': { key: 'dns', icon: 'D', color: '#e17055' },
-    'МВидео': { key: 'mvideo', icon: 'M', color: '#00b894' },
-  };
-  const s = storeMap[store] || storeMap['Wildberries'];
-  const mockPrice = Math.round(Math.random() * 50000 + 5000);
+  const btn = document.querySelector('.feed-box .btn-primary');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;"></span> Загрузка...';
+  btn.disabled = true;
 
-  products.push({
-    name,
-    sku: 'NEW-' + Date.now().toString().slice(-4),
-    store,
-    storeKey: s.key,
-    icon: s.icon,
-    color: s.color,
-    emoji: '📦',
-    price: mockPrice,
-    oldPrice: mockPrice,
-    minPrice: mockPrice,
-    targetPrice: Math.round(mockPrice * 0.9),
-    change: 0,
-    time: 'только что',
-  });
+  setTimeout(() => {
+    const feedItems = [
+      { name: 'Товар из фида 1', sku: 'FEED-001', cat: 'Электроника', emoji: '📦', price: Math.round(Math.random()*30000+2000) },
+      { name: 'Товар из фида 2', sku: 'FEED-002', cat: 'Электроника', emoji: '📦', price: Math.round(Math.random()*30000+2000) },
+      { name: 'Товар из фида 3', sku: 'FEED-003', cat: 'Электроника', emoji: '📦', price: Math.round(Math.random()*30000+2000) },
+    ];
 
-  closeModal();
-  renderTable(document.getElementById('searchInput').value.toLowerCase());
-  showToast(`"${name}" добавлен в отслеживание`);
-  document.getElementById('nameInput').value = '';
-  document.getElementById('urlInput').value = '';
+    feedItems.forEach(item => {
+      products.push({
+        ...item, oldPrice: item.price, minPrice: item.price,
+        targetPrice: Math.round(item.price * 0.9),
+        change: 0, time: 'только что', url,
+      });
+    });
+
+    saveProducts();
+    btn.innerHTML = orig;
+    btn.disabled = false;
+    document.getElementById('feedInput').value = '';
+    closeModal();
+    updateStats();
+    renderTable();
+    showToast(`Импортировано ${feedItems.length} товара из фида`);
+  }, 1500);
 }
 
+// ── Parsing ──
 function startParsing() {
   const bar = document.getElementById('parsingBar');
   bar.classList.add('active');
   let progress = 0;
-
   if (parsingInterval) clearInterval(parsingInterval);
 
   parsingInterval = setInterval(() => {
-    progress += Math.random() * 15 + 5;
+    progress += Math.random() * 12 + 4;
     if (progress >= 100) {
       progress = 100;
       clearInterval(parsingInterval);
       parsingInterval = null;
       setTimeout(() => {
         bar.classList.remove('active');
-        showToast('Цены обновлены для 24 товаров');
-        // Simulate random price changes
         products.forEach(p => {
-          const delta = (Math.random() - 0.5) * 0.06;
+          const d = (Math.random() - 0.5) * 0.06;
           p.oldPrice = p.price;
-          p.price = Math.round(p.price * (1 + delta));
-          p.change = parseFloat((delta * 100).toFixed(1));
+          p.price = Math.round(p.price * (1 + d));
+          p.change = parseFloat((d * 100).toFixed(1));
           if (p.price < p.minPrice) p.minPrice = p.price;
+          p.time = '1 мин';
         });
-        renderTable(document.getElementById('searchInput').value.toLowerCase());
-      }, 500);
+        saveProducts();
+        updateStats();
+        renderTable();
+        showToast('Цены обновлены · ' + products.length + ' позиций');
+      }, 400);
     }
     document.getElementById('progressFill').style.width = progress + '%';
     document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
-    document.getElementById('progressLabel').textContent = `Парсинг цен... (${Math.round(progress * 24 / 100)} из 24)`;
+    document.getElementById('progressLabel').textContent =
+      `Парсинг WB... ${Math.round(progress * products.length / 100)} из ${products.length}`;
   }, 300);
 }
 
 function stopParsing() {
-  if (parsingInterval) {
-    clearInterval(parsingInterval);
-    parsingInterval = null;
-  }
+  if (parsingInterval) { clearInterval(parsingInterval); parsingInterval = null; }
   document.getElementById('parsingBar').classList.remove('active');
   showToast('Парсинг остановлен');
 }
 
-function toggleChip(el) {
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
+// ── Export CSV ──
+function exportCSV() {
+  const bom = '\uFEFF';
+  const header = 'Название;SKU;Категория;Текущая цена;Старая цена;Мин. цена;Изменение %;Обновление\n';
+  const rows = products.map(p =>
+    [p.name, p.sku, p.cat, p.price, p.oldPrice, p.minPrice, p.change, p.time].join(';')
+  ).join('\n');
+  const blob = new Blob([bom + header + rows], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'price-parser-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('Файл скачан — откройте в Excel');
 }
 
+// ── Modal ──
+function openModal() { document.getElementById('modalOverlay').classList.add('active'); }
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+
+// ── Settings ──
 function openSettings() {
   loadSettings();
   document.getElementById('settingsOverlay').classList.add('active');
 }
-
-function closeSettings() {
-  document.getElementById('settingsOverlay').classList.remove('active');
-}
-
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('active'); }
 function closeSettingsOnOverlay(e) {
   if (e.target === document.getElementById('settingsOverlay')) closeSettings();
 }
 
 function selectPill(el, groupId) {
-  document.querySelectorAll(`#${groupId} .pill`).forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#' + groupId + ' .pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
 }
 
-function toggleSetting(el) {
-  el.classList.toggle('on');
-}
+function toggleSetting(el) { el.classList.toggle('on'); }
 
 function saveSettings() {
-  const interval = document.querySelector('#intervalPills .pill.active')?.dataset.value || '30';
+  const interval  = document.querySelector('#intervalPills .pill.active')?.dataset.value || '180';
   const autostart = document.getElementById('toggleAutostart').classList.contains('on');
-  const rawThreshold = parseInt(document.getElementById('thresholdInput').value, 10);
-  const threshold = Math.min(99, Math.max(1, isNaN(rawThreshold) ? 5 : rawThreshold));
-  const history = document.querySelector('#historyPills .pill.active')?.dataset.value || '30';
+  const rawThr    = parseInt(document.getElementById('thresholdInput').value, 10);
+  const threshold = Math.min(99, Math.max(1, isNaN(rawThr) ? 5 : rawThr));
+  const history   = document.querySelector('#historyPills .pill.active')?.dataset.value || '180';
+  const email     = document.getElementById('notifyEmail').value.trim();
+  const tg        = document.getElementById('notifyTg').value.trim();
 
-  localStorage.setItem('pp_settings', JSON.stringify({ interval, autostart, threshold, history }));
+  localStorage.setItem('pp_settings', JSON.stringify({ interval, autostart, threshold, history, email, tg }));
   closeSettings();
   showToast('Настройки сохранены');
 }
@@ -1662,53 +1556,30 @@ function loadSettings() {
   const raw = localStorage.getItem('pp_settings');
   if (!raw) return;
   let s;
-  try {
-    s = JSON.parse(raw);
-  } catch (e) {
-    return; // corrupted data — ignore, keep defaults
-  }
+  try { s = JSON.parse(raw); } catch { return; }
 
-  document.querySelectorAll('#intervalPills .pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.value === s.interval);
-  });
+  document.querySelectorAll('#intervalPills .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.value === s.interval));
   document.getElementById('toggleAutostart').classList.toggle('on', !!s.autostart);
   if (s.threshold) document.getElementById('thresholdInput').value = s.threshold;
-  document.querySelectorAll('#historyPills .pill').forEach(p => {
-    p.classList.toggle('active', p.dataset.value === s.history);
-  });
+  document.querySelectorAll('#historyPills .pill').forEach(p =>
+    p.classList.toggle('active', p.dataset.value === s.history));
+  if (s.email) document.getElementById('notifyEmail').value = s.email;
+  if (s.tg)    document.getElementById('notifyTg').value    = s.tg;
 }
 
+// ── Toast ──
 function showToast(msg) {
   const toast = document.getElementById('toast');
-  toast.innerHTML = '';
-  // Icon
-  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  icon.setAttribute('width', '16'); icon.setAttribute('height', '16');
-  icon.setAttribute('viewBox', '0 0 24 24'); icon.setAttribute('fill', 'none');
-  icon.setAttribute('stroke', 'var(--green)'); icon.setAttribute('stroke-width', '2');
-  icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
-  const text = document.createTextNode(' ' + msg);
-  toast.appendChild(icon);
-  toast.appendChild(text);
+  toast.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${esc(msg)}`;
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2500);
+  setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
-// Init
+// ── Init ──
+updateStats();
 renderTable();
 loadSettings();
-
-// Auto-detect store from URL input
-document.getElementById('urlInput')?.addEventListener('input', function() {
-  const v = this.value.toLowerCase();
-  const sel = document.getElementById('storeSelect');
-  if (v.includes('wildberries')) sel.value = 'Wildberries';
-  else if (v.includes('ozon')) sel.value = 'Ozon';
-  else if (v.includes('market.yandex')) sel.value = 'Яндекс Маркет';
-  else if (v.includes('dns-shop')) sel.value = 'DNS';
-  else if (v.includes('mvideo')) sel.value = 'МВидео';
-  else sel.value = '';
-});
 </script>
 </body>
 </html>
