@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -5,10 +8,27 @@ from fastapi.responses import JSONResponse
 from api.config import settings
 from api.db import Base, engine
 from api.routes import export, imports, parse, prices, products, settings as settings_router
+from api.scheduler import cleanup_old_prices, scheduled_parse
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Price Parser API")
+@asynccontextmanager
+async def lifespan(app):
+    scheduler = AsyncIOScheduler()
+
+    def _run_scheduled_parse():
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.create_task(scheduled_parse())
+
+    scheduler.add_job(_run_scheduled_parse, "interval", hours=3)
+    scheduler.add_job(cleanup_old_prices, "cron", hour=3, minute=0)
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+
+app = FastAPI(title="Price Parser API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
