@@ -76,14 +76,17 @@ def _save_prices(items: list[dict], db) -> int:
         url = item.get("url", "")
         article = _extract_article(url)
         if not article:
+            logger.warning(f"Could not extract article from URL: {url}")
             continue
 
         price = item.get("price") or item.get("salePriceU")
         if not price:
+            logger.warning(f"No price for article {article}")
             continue
 
         product = db.query(Product).filter(Product.wb_article == article).first()
         if not product:
+            logger.warning(f"Product with article {article} not found in DB")
             continue
 
         supplier_id = str(item.get("supplierId", ""))

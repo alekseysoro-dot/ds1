@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,7 +20,7 @@ class Product(Base):
     wb_url: Mapped[str] = mapped_column(Text, nullable=False)
     group_name: Mapped[str | None] = mapped_column(Text)
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     sellers: Mapped[list["Seller"]] = relationship(
         "Seller", back_populates="product", cascade="all, delete-orphan"
@@ -47,7 +47,7 @@ class PriceHistory(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     seller_id: Mapped[str] = mapped_column(String(36), ForeignKey("sellers.id"))
     price: Mapped[int] = mapped_column(Integer, nullable=False)
-    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     seller: Mapped["Seller"] = relationship("Seller", back_populates="price_history")
 
