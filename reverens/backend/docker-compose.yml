@@ -28,18 +28,6 @@ services:
     expose:
       - "8000"
 
-  scraper:
-    build:
-      context: .          # build context = backend/ (includes api/ and scraper/)
-      dockerfile: scraper/Dockerfile
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql://priceparser:${POSTGRES_PASSWORD}@db:5432/priceparser
-    depends_on:
-      db:
-        condition: service_healthy
-
   nginx:
     image: nginx:alpine
     restart: unless-stopped
