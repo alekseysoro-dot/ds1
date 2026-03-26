@@ -1,7 +1,7 @@
 """Parse endpoints: start Apify Actor run, check status, write results to DB."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -35,7 +35,7 @@ async def run_parse(db: Session = Depends(get_db)):
     _active_runs[internal_id] = {
         "apify_run_id": result["run_id"],
         "dataset_id": result["dataset_id"],
-        "started_at": datetime.utcnow(),
+        "started_at": datetime.now(timezone.utc),
     }
 
     return ParseRunOut(

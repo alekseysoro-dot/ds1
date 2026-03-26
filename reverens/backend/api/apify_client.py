@@ -17,11 +17,11 @@ async def start_actor_run(token: str, urls: list[str]) -> dict:
         RuntimeError: if the API returns HTTP 401 (invalid token).
     """
     endpoint = f"{BASE_URL}/acts/{ACTOR_ID}/runs"
-    params = {"token": token}
+    headers = {"Authorization": f"Bearer {token}"}
     payload = {"startUrls": [{"url": u} for u in urls]}
 
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(endpoint, params=params, json=payload)
+        response = await client.post(endpoint, headers=headers, json=payload)
 
     if response.status_code == 401:
         raise RuntimeError(f"Apify authentication failed: 401 Unauthorized")
@@ -42,10 +42,10 @@ async def check_run_status(token: str, run_id: str) -> dict:
         dict with keys: status, dataset_id
     """
     endpoint = f"{BASE_URL}/actor-runs/{run_id}"
-    params = {"token": token}
+    headers = {"Authorization": f"Bearer {token}"}
 
     async with httpx.AsyncClient(timeout=15) as client:
-        response = await client.get(endpoint, params=params)
+        response = await client.get(endpoint, headers=headers)
 
     response.raise_for_status()
     data = response.json()["data"]
@@ -62,10 +62,10 @@ async def fetch_dataset_items(token: str, dataset_id: str) -> list[dict]:
         List of item dicts as returned by the Apify dataset API.
     """
     endpoint = f"{BASE_URL}/datasets/{dataset_id}/items"
-    params = {"token": token, "format": "json"}
+    headers = {"Authorization": f"Bearer {token}"}
 
     async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.get(endpoint, params=params)
+        response = await client.get(endpoint, headers=headers, params={"format": "json"})
 
     response.raise_for_status()
     return response.json()
