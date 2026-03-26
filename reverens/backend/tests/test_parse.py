@@ -2,8 +2,17 @@
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from tests.conftest import HEADERS
 from api.models import Product, Seller, PriceHistory
+
+
+@pytest.fixture(autouse=True)
+def clean_active_runs():
+    yield
+    from api.routes.parse import _active_runs
+    _active_runs.clear()
 
 
 class TestParseRun:
@@ -55,7 +64,7 @@ class TestParseStatus:
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "RUNNING"
-        _active_runs.clear()
+
 
     def test_returns_succeeded_and_writes_prices(self, client, db):
         product = Product(name="Test", wb_url="https://www.wildberries.ru/catalog/12345/detail.aspx", wb_article="12345")
@@ -90,7 +99,7 @@ class TestParseStatus:
         prices = db.query(PriceHistory).filter(PriceHistory.seller_id == seller.id).all()
         assert len(prices) == 1
         assert prices[0].price == 129900
-        _active_runs.clear()
+
 
     def test_returns_404_for_unknown_run(self, client):
         resp = client.get("/api/parse/status/nonexistent", headers=HEADERS)
@@ -110,4 +119,4 @@ class TestParseStatus:
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "FAILED"
-        _active_runs.clear()
+

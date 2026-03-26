@@ -62,6 +62,8 @@ def _save_apify_results(items: list[dict], db: Session) -> int:
             )
             db.add(seller)
             db.flush()
+        elif seller.seller_name != supplier_name:
+            seller.seller_name = supplier_name
 
         db.add(PriceHistory(seller_id=seller.id, price=int(price)))
         written += 1
@@ -117,13 +119,18 @@ async def parse_status(run_id: str, db: Session = Depends(get_db)):
         _active_runs.pop(run_id, None)
         return ParseStatusOut(run_id=run_id, status="FAILED", error="Apify Actor failed")
 
-    # SUCCEEDED
+    # SUCCEEDED — guard against duplicate writes on repeated polling
+    if run_info.get("processing"):
+        return ParseStatusOut(run_id=run_id, status="RUNNING")
+    run_info["processing"] = True
+
     try:
         items = await fetch_dataset_items(
             settings.apify_api_token, status["dataset_id"]
         )
         updated = _save_apify_results(items, db)
     except Exception as e:
+        run_info.pop("processing", None)
         logger.exception("Error saving Apify results")
         return ParseStatusOut(run_id=run_id, status="FAILED", error=str(e))
 
