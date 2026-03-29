@@ -78,6 +78,10 @@ class SettingsUpdate(BaseModel):
 
 # ── Parse ────────────────────────────────────────────────────────────────────
 
+class ParseRunIn(BaseModel):
+    keyword: str | None = None
+
+
 class ParseRunOut(BaseModel):
     run_id: str
     status: str

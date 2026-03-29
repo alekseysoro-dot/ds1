@@ -12,7 +12,7 @@ from api.apify_client import start_actor_run, check_run_status, fetch_dataset_it
 from api.config import settings
 from api.db import get_db
 from api.models import Product, PriceHistory, Seller
-from api.schemas import ParseRunOut, ParseStatusOut
+from api.schemas import ParseRunIn, ParseRunOut, ParseStatusOut
 
 router = APIRouter()
 
@@ -75,10 +75,10 @@ def _save_apify_results(items: list[dict], db: Session) -> int:
 
 
 @router.post("/parse/run", response_model=ParseRunOut)
-async def run_parse(db: Session = Depends(get_db)):
-    keyword = settings.apify_keyword
+async def run_parse(body: ParseRunIn = None, db: Session = Depends(get_db)):
+    keyword = (body.keyword if body and body.keyword else None) or settings.apify_keyword
     if not keyword:
-        raise HTTPException(status_code=400, detail="APIFY_KEYWORD not configured")
+        raise HTTPException(status_code=400, detail="Keyword not provided and APIFY_KEYWORD not configured")
 
     try:
         result = await start_actor_run(settings.apify_api_token, keyword)

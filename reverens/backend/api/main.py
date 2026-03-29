@@ -22,7 +22,7 @@ async def lifespan(app):
     from api.scheduler import cleanup_old_prices, scheduled_parse
 
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(scheduled_parse, "interval", hours=3)
+    scheduler.add_job(scheduled_parse, "interval", hours=12)
     scheduler.add_job(cleanup_old_prices, "cron", hour=3, minute=0)
     scheduler.start()
     yield
@@ -33,7 +33,7 @@ app = FastAPI(title="Price Parser API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
+    allow_origins=["*"],
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
@@ -41,6 +41,8 @@ app.add_middleware(
 
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
     if request.url.path.startswith("/api") and request.headers.get("X-API-Key") != settings.api_key:
         return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
     return await call_next(request)
