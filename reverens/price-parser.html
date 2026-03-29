@@ -907,6 +907,7 @@ tbody tr:last-child td { border-bottom: none; }
             <th>Товар</th>
             <th>Текущая цена</th>
             <th>Мин. цена</th>
+            <th>Целевая цена</th>
             <th>Изменение</th>
             <th>Обновление</th>
             <th></th>
@@ -1060,18 +1061,18 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="modal-body">
       <!-- Feed import -->
       <div class="feed-box">
-        <div class="feed-box-label">↓ Импорт через фид WB</div>
+        <div class="feed-box-label">↓ Поиск товаров на WB</div>
         <div class="form-group" style="margin-bottom:10px;">
-          <label class="form-label">URL фида</label>
-          <input type="text" class="form-input" id="feedInput"
-            placeholder="https://www.wildberries.ru/catalog/...">
-          <div class="form-hint">Вставьте ссылку на категорию, бренд или поиск WB — товары загрузятся автоматически</div>
+          <label class="form-label">Ключевые слова</label>
+          <input type="text" class="form-input" id="keywordInput"
+            placeholder="телевизор Haier 55">
+          <div class="form-hint">Введите запрос как в поиске WB — найденные товары с ценами добавятся автоматически</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="importFeed()">
+        <button class="btn btn-primary btn-sm" onclick="searchByKeyword()">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          Загрузить из фида
+          Найти товары
         </button>
       </div>
 
@@ -1120,64 +1121,41 @@ function esc(str) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// ── API Config ──
+const API_BASE = 'http://localhost:8000/api';
+const API_KEY = 'dev-key';
+const HEADERS = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
+
+async function apiFetch(path, options = {}) {
+  const resp = await fetch(API_BASE + path, { ...options, headers: { ...HEADERS, ...options.headers } });
+  if (!resp.ok) throw new Error(`API ${resp.status}: ${resp.statusText}`);
+  return resp.json();
+}
+
 // ── State ──
 let activeProductIndex = null;
 let drawerOpen = false;
 let currentStore = 'all';
-let currentQuickFilter = 'all'; // 'all' | 'down' | 'up'
+let currentQuickFilter = 'all';
 let currentCat = '';
 let parsingInterval = null;
 
-// ── Products ──
-const DEFAULT_PRODUCTS = [
-  { name: 'iPhone 15 Pro 256GB', sku: 'APL-15P-256', cat: 'Электроника', emoji: '📱', price: 89990, oldPrice: 94990, minPrice: 85990, targetPrice: 81690, change: -5.3, time: '2 мин', url: 'https://www.wildberries.ru' },
-  { name: 'Samsung Galaxy S24 Ultra', sku: 'SAM-S24U-256', cat: 'Электроника', emoji: '📱', price: 99990, oldPrice: 104990, minPrice: 94990, targetPrice: 90240, change: -4.8, time: '5 мин', url: '' },
-  { name: 'Sony WH-1000XM5', sku: 'SNY-WH5-BLK', cat: 'Электроника', emoji: '🎧', price: 27490, oldPrice: 25990, minPrice: 23990, targetPrice: 22790, change: 5.8, time: '12 мин', url: '' },
-  { name: 'MacBook Air M3 16/512', sku: 'APL-MBA-M3', cat: 'Электроника', emoji: '💻', price: 134990, oldPrice: 139990, minPrice: 129990, targetPrice: 123490, change: -3.6, time: '8 мин', url: '' },
-  { name: 'Nike Air Max 90 White', sku: 'NK-AM90-WHT', cat: 'Одежда', emoji: '👟', price: 8990, oldPrice: 11990, minPrice: 7990, targetPrice: 7590, change: -25.0, time: '3 мин', url: '' },
-  { name: 'PlayStation 5 Slim', sku: 'SNY-PS5-SLM', cat: 'Электроника', emoji: '🎮', price: 47990, oldPrice: 44990, minPrice: 42990, targetPrice: 40840, change: 6.7, time: '20 мин', url: '' },
-  { name: 'Xiaomi Robot Vacuum X10+', sku: 'XMI-RBV-X10', cat: 'Бытовая техника', emoji: '🤖', price: 32990, oldPrice: 36990, minPrice: 29990, targetPrice: 28490, change: -10.8, time: '7 мин', url: '' },
-  { name: 'Dyson V15 Detect', sku: 'DYS-V15-DET', cat: 'Бытовая техника', emoji: '🔌', price: 54990, oldPrice: 54990, minPrice: 49990, targetPrice: 47490, change: 0, time: '15 мин', url: '' },
-  { name: 'Кроссовки Adidas Ultraboost', sku: 'ADD-UB-BLK', cat: 'Одежда', emoji: '👟', price: 12490, oldPrice: 11490, minPrice: 9990, targetPrice: 9490, change: 8.7, time: '1 мин', url: '' },
-  { name: 'Крем Vichy LiftActiv', sku: 'VCH-LIFT-50', cat: 'Красота', emoji: '🧴', price: 2990, oldPrice: 3490, minPrice: 2490, targetPrice: 2200, change: -14.3, time: '30 мин', url: '' },
-];
-
-let products = (() => {
-  try {
-    const raw = localStorage.getItem('pp_products');
-    return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
-  } catch { return JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)); }
-})();
-
-function saveProducts() {
-  localStorage.setItem('pp_products', JSON.stringify(products));
-}
-
-// ── WB Sellers mock ──
-const WB_SELLERS = [
-  { name: 'Продавец WB Official', mult: 1.00 },
-  { name: 'ТехноМаркет', mult: 1.03 },
-  { name: 'GadgetPro', mult: 1.06 },
-  { name: 'МегаТехно', mult: 1.09 },
-  { name: 'Электроника24', mult: 1.13 },
-];
+// ── Products (loaded from API) ──
+let products = [];
 
 // ── Format ──
 function formatPrice(n) {
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0') + '\u00A0₽';
 }
 
-// ── History 180 pts ──
-function generateMockHistory(currentPrice) {
-  const points = [];
-  let p = Math.round(currentPrice * 1.12);
-  for (let i = 0; i < 180; i++) {
-    const d = (Math.random() - 0.52) * 0.025;
-    p = Math.round(p * (1 + d));
-    points.push(p);
+// ── History from API ──
+async function fetchHistory(productId) {
+  try {
+    const data = await apiFetch(`/prices/${productId}/history?days=180`);
+    return data.map(p => p.price);
+  } catch {
+    return [0];
   }
-  points[179] = currentPrice;
-  return points;
 }
 
 // ── Chart ──
@@ -1244,7 +1222,7 @@ function renderTable() {
   });
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6">
+    tbody.innerHTML = `<tr><td colspan="7">
       <div class="empty-state">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -1277,6 +1255,7 @@ function renderTable() {
         ${p.oldPrice !== p.price ? `<span class="price-old">${formatPrice(p.oldPrice)}</span>` : ''}
       </td>
       <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)">${formatPrice(p.minPrice)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">${formatPrice(p.targetPrice)}</td>
       <td><span class="change-badge ${cls}">${txt}</span></td>
       <td><span class="last-check">${esc(p.time)} назад</span></td>
       <td>
@@ -1324,7 +1303,7 @@ function toggleChip(el) {
 }
 
 // ── Drawer ──
-function openDrawer(idx) {
+async function openDrawer(idx) {
   const p = products[idx];
   activeProductIndex = idx;
   drawerOpen = true;
@@ -1340,22 +1319,29 @@ function openDrawer(idx) {
   const dp = document.getElementById('drawerDeltaPct');
   dv.textContent = sign + ' ' + formatPrice(Math.abs(delta));
   dv.style.color = color;
-  dp.textContent = p.change + '% за период';
+  dp.textContent = (p.change || 0) + '% за период';
   dp.style.color = color;
 
-  // Chart
-  renderChart(document.getElementById('drawerChart'), generateMockHistory(p.price));
+  // Chart from API
+  const history = await fetchHistory(p.apiId);
+  if (history.length > 1) {
+    renderChart(document.getElementById('drawerChart'), history);
+  }
 
-  // Sellers
-  const html = WB_SELLERS.map((s, i) => {
-    const sp = Math.round(p.price * s.mult);
-    const best = i === 0;
-    return `<div class="seller-price-row ${best ? 'best' : ''}">
-      <span class="seller-price-name">${esc(s.name)}</span>
-      <span class="seller-price-val">${formatPrice(sp)}</span>
-    </div>`;
-  }).join('');
-  document.getElementById('drawerSellerPrices').innerHTML = html;
+  // Sellers from API
+  try {
+    const sellers = await apiFetch(`/prices/${p.apiId}`);
+    const html = sellers.map((s, i) => {
+      const best = i === 0;
+      return `<div class="seller-price-row ${best ? 'best' : ''}">
+        <span class="seller-price-name">${esc(s.seller_name)}</span>
+        <span class="seller-price-val">${formatPrice(s.latest_price)}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('drawerSellerPrices').innerHTML = html || '<div style="color:var(--text2)">Нет данных</div>';
+  } catch {
+    document.getElementById('drawerSellerPrices').innerHTML = '<div style="color:var(--text2)">Ошибка загрузки</div>';
+  }
 
   // Open button
   const openBtn = document.getElementById('drawerOpenBtn');
@@ -1379,9 +1365,12 @@ function closeDrawer() {
 }
 
 // ── Product CRUD ──
-function deleteProduct(idx) {
+async function deleteProduct(idx) {
+  const p = products[idx];
+  try {
+    await fetch(API_BASE + `/products/${p.apiId}`, { method: 'DELETE', headers: HEADERS });
+  } catch {}
   products.splice(idx, 1);
-  saveProducts();
   if (activeProductIndex === idx) closeDrawer();
   else if (activeProductIndex !== null && idx < activeProductIndex) activeProductIndex--;
   updateStats();
@@ -1389,129 +1378,158 @@ function deleteProduct(idx) {
   showToast('Товар удалён');
 }
 
-function addProduct() {
+async function addProduct() {
   const name   = document.getElementById('nameInput').value.trim();
-  const sku    = document.getElementById('skuInput').value.trim() || 'SKU-' + Date.now().toString().slice(-4);
+  const sku    = document.getElementById('skuInput').value.trim() || '';
   const cat    = document.getElementById('catInput').value;
   const target = parseInt(document.getElementById('targetInput').value) || 0;
 
   if (!name) { showToast('Введите название товара'); return; }
 
-  const mockPrice = Math.round(Math.random() * 50000 + 3000);
-  products.push({
-    name, sku, cat,
-    emoji: '📦',
-    price: mockPrice, oldPrice: mockPrice, minPrice: mockPrice,
-    targetPrice: target || Math.round(mockPrice * 0.9),
-    change: 0,
-    time: 'только что',
-    url: '',
-  });
-
-  saveProducts();
-  closeModal();
-  updateStats();
-  renderTable();
-  showToast(`"${name}" добавлен`);
+  try {
+    const created = await apiFetch('/products', {
+      method: 'POST',
+      body: JSON.stringify({ name, wb_url: `https://www.wildberries.ru/catalog/${sku}/detail.aspx`, group_name: cat || null }),
+    });
+    products.push({
+      apiId: created.id, name: created.name, sku: created.wb_article || sku, cat: cat || '',
+      emoji: '📦', price: 0, oldPrice: 0, minPrice: 0,
+      targetPrice: target, change: 0, time: 'новый', url: created.wb_url,
+    });
+    closeModal();
+    updateStats();
+    renderTable();
+    showToast(`"${name}" добавлен`);
+  } catch (e) {
+    showToast('Ошибка: ' + e.message);
+  }
   document.getElementById('nameInput').value = '';
   document.getElementById('skuInput').value  = '';
   document.getElementById('targetInput').value = '';
 }
 
-// ── Feed import (mock) ──
-function importFeed() {
-  const url = document.getElementById('feedInput').value.trim();
-  if (!url || !url.includes('wildberries')) {
-    showToast('Введите URL страницы Wildberries');
-    return;
-  }
+// ── Keyword search ──
+async function searchByKeyword() {
+  const keyword = document.getElementById('keywordInput').value.trim();
+  if (!keyword) { showToast('Введите ключевые слова'); return; }
 
   const btn = document.querySelector('.feed-box .btn-primary');
   const orig = btn.innerHTML;
-  btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;"></span> Загрузка...';
+  btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;"></span> Поиск...';
   btn.disabled = true;
+  closeModal();
 
-  setTimeout(() => {
-    const feedItems = [
-      { name: 'Товар из фида 1', sku: 'FEED-001', cat: 'Электроника', emoji: '📦', price: Math.round(Math.random()*30000+2000) },
-      { name: 'Товар из фида 2', sku: 'FEED-002', cat: 'Электроника', emoji: '📦', price: Math.round(Math.random()*30000+2000) },
-      { name: 'Товар из фида 3', sku: 'FEED-003', cat: 'Электроника', emoji: '📦', price: Math.round(Math.random()*30000+2000) },
-    ];
-
-    feedItems.forEach(item => {
-      products.push({
-        ...item, oldPrice: item.price, minPrice: item.price,
-        targetPrice: Math.round(item.price * 0.9),
-        change: 0, time: 'только что', url,
-      });
+  try {
+    const run = await apiFetch('/parse/run', {
+      method: 'POST',
+      body: JSON.stringify({ keyword }),
     });
+    showToast(`Поиск "${keyword}" запущен`);
 
-    saveProducts();
-    btn.innerHTML = orig;
-    btn.disabled = false;
-    document.getElementById('feedInput').value = '';
-    closeModal();
-    updateStats();
-    renderTable();
-    showToast(`Импортировано ${feedItems.length} товара из фида`);
-  }, 1500);
+    const bar = document.getElementById('parsingBar');
+    bar.classList.add('active');
+    document.getElementById('progressLabel').textContent = `Ищем "${keyword}" на WB...`;
+    document.getElementById('progressFill').style.width = '30%';
+
+    const pollId = setInterval(async () => {
+      try {
+        const status = await apiFetch(`/parse/status/${run.run_id}`);
+        if (status.status === 'SUCCEEDED') {
+          clearInterval(pollId);
+          document.getElementById('progressFill').style.width = '100%';
+          document.getElementById('progressLabel').textContent = `Найдено: ${status.updated} товаров`;
+          await loadProducts();
+          updateStats();
+          renderTable();
+          showToast(`Добавлено ${status.updated} товаров по запросу "${keyword}"`);
+          setTimeout(() => bar.classList.remove('active'), 2000);
+        } else if (status.status === 'FAILED') {
+          clearInterval(pollId);
+          bar.classList.remove('active');
+          showToast('Ошибка поиска: ' + (status.error || 'unknown'));
+        }
+      } catch {
+        clearInterval(pollId);
+        bar.classList.remove('active');
+      }
+    }, 5000);
+  } catch (e) {
+    showToast('Ошибка: ' + e.message);
+  }
+  btn.innerHTML = orig;
+  btn.disabled = false;
 }
 
-// ── Parsing ──
-function startParsing() {
+// ── Parsing (real Apify) ──
+let _parseRunId = null;
+let _parsePoller = null;
+
+async function startParsing() {
   const bar = document.getElementById('parsingBar');
   bar.classList.add('active');
-  let progress = 0;
-  if (parsingInterval) clearInterval(parsingInterval);
+  document.getElementById('progressFill').style.width = '10%';
+  document.getElementById('progressPercent').textContent = '...';
+  document.getElementById('progressLabel').textContent = 'Запуск Apify Actor...';
 
-  parsingInterval = setInterval(() => {
-    progress += Math.random() * 12 + 4;
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(parsingInterval);
-      parsingInterval = null;
-      setTimeout(() => {
+  try {
+    const run = await apiFetch('/parse/run', { method: 'POST' });
+    _parseRunId = run.run_id;
+    showToast('Парсинг запущен');
+
+    let dots = 0;
+    _parsePoller = setInterval(async () => {
+      try {
+        const status = await apiFetch(`/parse/status/${_parseRunId}`);
+        dots = (dots + 1) % 4;
+        const dotsStr = '.'.repeat(dots);
+
+        if (status.status === 'SUCCEEDED') {
+          clearInterval(_parsePoller);
+          _parsePoller = null;
+          document.getElementById('progressFill').style.width = '100%';
+          document.getElementById('progressPercent').textContent = '100%';
+          document.getElementById('progressLabel').textContent = `Готово: ${status.updated} цен обновлено`;
+          await loadProducts();
+          updateStats();
+          renderTable();
+          showToast(`Цены обновлены: ${status.updated} позиций`);
+          setTimeout(() => bar.classList.remove('active'), 2000);
+        } else if (status.status === 'FAILED') {
+          clearInterval(_parsePoller);
+          _parsePoller = null;
+          bar.classList.remove('active');
+          showToast('Ошибка парсинга: ' + (status.error || 'unknown'));
+        } else {
+          document.getElementById('progressFill').style.width = '50%';
+          document.getElementById('progressPercent').textContent = '~';
+          document.getElementById('progressLabel').textContent = `Парсинг WB${dotsStr}`;
+        }
+      } catch (e) {
+        clearInterval(_parsePoller);
+        _parsePoller = null;
         bar.classList.remove('active');
-        products.forEach(p => {
-          const d = (Math.random() - 0.5) * 0.06;
-          p.oldPrice = p.price;
-          p.price = Math.round(p.price * (1 + d));
-          p.change = parseFloat((d * 100).toFixed(1));
-          if (p.price < p.minPrice) p.minPrice = p.price;
-          p.time = '1 мин';
-        });
-        saveProducts();
-        updateStats();
-        renderTable();
-        showToast('Цены обновлены · ' + products.length + ' позиций');
-      }, 400);
-    }
-    document.getElementById('progressFill').style.width = progress + '%';
-    document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
-    document.getElementById('progressLabel').textContent =
-      `Парсинг WB... ${Math.round(progress * products.length / 100)} из ${products.length}`;
-  }, 300);
+        showToast('Ошибка: ' + e.message);
+      }
+    }, 5000);
+  } catch (e) {
+    bar.classList.remove('active');
+    showToast('Не удалось запустить: ' + e.message);
+  }
 }
 
 function stopParsing() {
-  if (parsingInterval) { clearInterval(parsingInterval); parsingInterval = null; }
+  if (_parsePoller) { clearInterval(_parsePoller); _parsePoller = null; }
   document.getElementById('parsingBar').classList.remove('active');
   showToast('Парсинг остановлен');
 }
 
 // ── Export CSV ──
 function exportCSV() {
-  const bom = '\uFEFF';
-  const header = 'Название;SKU;Категория;Текущая цена;Старая цена;Мин. цена;Изменение %;Обновление\n';
-  const rows = products.map(p =>
-    [p.name, p.sku, p.cat, p.price, p.oldPrice, p.minPrice, p.change, p.time].join(';')
-  ).join('\n');
-  const blob = new Blob([bom + header + rows], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = API_BASE + '/export/csv?api_key=' + API_KEY;
   a.download = 'price-parser-' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
-  showToast('Файл скачан — откройте в Excel');
+  showToast('Файл скачан');
 }
 
 // ── Modal ──
@@ -1576,10 +1594,51 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
+// ── Load products from API ──
+async function loadProducts() {
+  try {
+    const apiProducts = await apiFetch('/products');
+    const loaded = [];
+    for (const p of apiProducts) {
+      let price = 0, oldPrice = 0, change = 0, sellers = [];
+      try {
+        sellers = await apiFetch(`/prices/${p.id}`);
+        if (sellers.length) {
+          const best = sellers.reduce((a, b) => a.latest_price < b.latest_price ? a : b);
+          price = best.latest_price;
+          oldPrice = best.prev_price || price;
+          change = best.delta_pct || 0;
+        }
+      } catch {}
+      loaded.push({
+        apiId: p.id,
+        name: p.name,
+        sku: p.wb_article || '',
+        cat: p.group_name || '',
+        emoji: '📦',
+        price,
+        oldPrice,
+        minPrice: price,
+        targetPrice: 0,
+        change,
+        time: 'API',
+        url: p.wb_url,
+      });
+    }
+    products = loaded;
+  } catch (e) {
+    console.error('Failed to load products:', e);
+    showToast('Ошибка загрузки данных');
+  }
+}
+
 // ── Init ──
-updateStats();
-renderTable();
-loadSettings();
+(async () => {
+  await loadProducts();
+  updateStats();
+  renderTable();
+  loadSettings();
+})();
 </script>
 </body>
 </html>
