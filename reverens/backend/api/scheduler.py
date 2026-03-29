@@ -13,6 +13,7 @@ from api.apify_client import start_actor_run, check_run_status, fetch_dataset_it
 from api.config import settings
 from api.db import SessionLocal
 from api.models import PriceHistory, Product, Seller
+from api.notifier import check_price_alerts
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,14 @@ async def scheduled_parse() -> None:
                 items = await fetch_dataset_items(settings.apify_api_token, status["dataset_id"])
                 written = _save_prices(items, db)
                 logger.info(f"Scheduled parse complete: {written} prices written")
+
+                try:
+                    alerts = check_price_alerts(db)
+                    if alerts:
+                        logger.info(f"Sent {alerts} price alert(s)")
+                except Exception:
+                    logger.exception("Error checking price alerts")
+
                 return
 
             if status["status"] == "FAILED":

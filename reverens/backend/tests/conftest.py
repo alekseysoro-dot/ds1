@@ -11,6 +11,10 @@ os.environ["API_KEY"] = "test-key"
 os.environ["CORS_ORIGINS"] = "http://localhost"
 os.environ["APIFY_API_TOKEN"] = "test-apify-token"
 os.environ["APIFY_KEYWORD"] = "телевизор Haier 55"
+os.environ["SMTP_HOST"] = ""
+os.environ["SMTP_PORT"] = "465"
+os.environ["SMTP_USER"] = ""
+os.environ["SMTP_PASSWORD"] = ""
 os.environ["TESTING"] = "1"
 
 from api.db import Base, get_db

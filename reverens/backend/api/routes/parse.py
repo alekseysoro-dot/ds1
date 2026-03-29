@@ -12,6 +12,7 @@ from api.apify_client import start_actor_run, check_run_status, fetch_dataset_it
 from api.config import settings
 from api.db import get_db
 from api.models import Product, PriceHistory, Seller
+from api.notifier import check_price_alerts
 from api.schemas import ParseRunIn, ParseRunOut, ParseStatusOut
 
 router = APIRouter()
@@ -131,6 +132,14 @@ async def parse_status(run_id: str, db: Session = Depends(get_db)):
             settings.apify_api_token, status["dataset_id"]
         )
         updated = _save_apify_results(items, db)
+
+        try:
+            alerts = check_price_alerts(db)
+            if alerts:
+                logger.info(f"Sent {alerts} price alert(s)")
+        except Exception:
+            logger.exception("Error checking price alerts")
+
     except Exception as e:
         run_info.pop("processing", None)
         logger.exception("Error saving Apify results")

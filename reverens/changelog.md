@@ -13,6 +13,8 @@
 - `[вопрос]` | Деплой через GitHub + Vercel | Объяснён пошаговый процесс: создание репо → upload файла → подключение Vercel → автодеплой | Уточняется: деплоить только price-parser.html или весь проект
 - `[вопрос]` | Не видна кнопка Add file на GitHub | Объяснено: в пустом репо ищи ссылку "uploading an existing file"; альтернатива — git push через терминал | Пользователь нашёл ссылку на репо: https://github.com/alekseysoro-dot/parsernew.git
 - `[деплой]` | Подключение локального репо к GitHub | Выданы команды: git remote add origin + git push -u origin main; объяснена авторизация через Personal Access Token | Ожидается выполнение пользователем
+- `[деплой]` | Пуш на GitHub в репо parsernew | origin уже занят (ds1.git); добавлен remote parsernew; закоммичены файлы reverens; выполнен push -u parsernew main | Успешно — код на GitHub. Vercel: Root Directory = reverens, URL будет /price-parser.html
+- `[деплой]` | Vercel не видит репозиторий parsernew | Залогинен через GitHub, но нет доступа к репо; инструкция: github.com/settings/installations → Vercel → Configure → All repositories → Save | Ожидается результат
 
 ## 2026-03-25
 
