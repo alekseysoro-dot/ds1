@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
 
+    # Telegram
+    telegram_bot_token: str = ""
+
     class Config:
         env_file = ".env"
 

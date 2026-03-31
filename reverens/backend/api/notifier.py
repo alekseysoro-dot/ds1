@@ -2,14 +2,14 @@
 Price change notification module.
 
 Detects price changes exceeding the configured threshold
-and sends email alerts to the configured recipient.
+and sends alerts via email (SMTP) and Telegram Bot API.
 """
 
 import logging
 import smtplib
 from email.mime.text import MIMEText
 
-from sqlalchemy import func
+import httpx
 from sqlalchemy.orm import Session
 
 from api.config import settings
@@ -40,14 +40,40 @@ def send_email(to: str, subject: str, body: str) -> bool:
         return False
 
 
+def send_telegram(chat_id: str, text: str) -> bool:
+    """Send a message via Telegram Bot API. Returns True on success."""
+    if not settings.telegram_bot_token:
+        logger.warning("Telegram bot token not configured, skipping")
+        return False
+
+    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
+
+    try:
+        resp = httpx.post(url, json={"chat_id": chat_id, "text": text}, timeout=15)
+        if resp.status_code == 200 and resp.json().get("ok"):
+            logger.info(f"Telegram message sent to {chat_id}")
+            return True
+        logger.error(f"Telegram API error: {resp.text}")
+        return False
+    except Exception:
+        logger.exception(f"Failed to send Telegram message to {chat_id}")
+        return False
+
+
 def check_price_alerts(db: Session) -> int:
     """
     Compare the two most recent prices for each seller.
-    If the change exceeds the threshold, send an email alert.
+    If the change exceeds the threshold, send alerts via email and/or Telegram.
     Returns the number of alerts sent.
     """
     ns = db.query(NotificationSettings).first()
-    if not ns or not ns.email:
+    if not ns:
+        return 0
+
+    has_email = bool(ns.email)
+    has_tg = bool(ns.tg_chat_id)
+
+    if not has_email and not has_tg:
         return 0
 
     threshold = ns.threshold or 5
@@ -55,7 +81,6 @@ def check_price_alerts(db: Session) -> int:
 
     sellers = db.query(Seller).all()
     for seller in sellers:
-        # Get the two most recent price records for this seller
         recent = (
             db.query(PriceHistory)
             .filter(PriceHistory.seller_id == seller.id)
@@ -94,7 +119,13 @@ def check_price_alerts(db: Session) -> int:
 
         subject = f"WB Price Alert: {product_name} ({sign}{change_pct:.1f}%)"
 
-        if send_email(ns.email, subject, body):
+        sent = False
+        if has_email:
+            sent = send_email(ns.email, subject, body) or sent
+        if has_tg:
+            sent = send_telegram(ns.tg_chat_id, body) or sent
+
+        if sent:
             alerts_sent += 1
 
     return alerts_sent
