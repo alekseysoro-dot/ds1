@@ -1617,32 +1617,58 @@ function importFeed() {
 async function startParsing() {
   if (!API_KEY) { showToast('Введите API ключ в настройках'); return; }
 
+  // Collect active keywords from DB, fallback to env keyword
+  const activeKw = keywordsData.filter(k => k.is_active);
+  const keywords = activeKw.length > 0 ? activeKw.map(k => k.keyword) : [null];
+
   const bar = document.getElementById('parsingBar');
   bar.classList.add('active');
-  document.getElementById('progressFill').style.width = '30%';
-  document.getElementById('progressPercent').textContent = '...';
-  document.getElementById('progressLabel').textContent = 'Парсинг WB...';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressPercent').textContent = '0%';
 
+  let totalProducts = 0;
   try {
-    const resp = await fetch(`${API_BASE}/api/parse/run`, {
-      method: 'POST',
-      headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
-    });
+    for (let i = 0; i < keywords.length; i++) {
+      const pct = Math.round(((i + 0.5) / keywords.length) * 100);
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressPercent').textContent = pct + '%';
+      document.getElementById('progressLabel').textContent =
+        keywords[i] ? `Парсинг: ${keywords[i]}... (${i+1}/${keywords.length})` : 'Парсинг WB...';
 
-    document.getElementById('progressFill').style.width = '70%';
+      const body = keywords[i] ? { keyword: keywords[i] } : {};
+      const resp = await fetch(`${API_BASE}/api/parse/run`, {
+        method: 'POST',
+        headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.detail || `Ошибка ${resp.status}`);
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        if (resp.status === 503) {
+          showToast(`WB rate limit — ждём 60с...`);
+          await new Promise(r => setTimeout(r, 60000));
+          i--; // retry
+          continue;
+        }
+        throw new Error(err.detail || `Ошибка ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      totalProducts = data.total_products;
+
+      // Pause between keywords to avoid WB rate limit
+      if (i < keywords.length - 1) {
+        document.getElementById('progressLabel').textContent = 'Пауза 60с (лимит WB)...';
+        await new Promise(r => setTimeout(r, 60000));
+      }
     }
 
-    const data = await resp.json();
     document.getElementById('progressFill').style.width = '100%';
     document.getElementById('progressPercent').textContent = '100%';
 
     await loadProducts();
     setTimeout(() => bar.classList.remove('active'), 500);
-    showToast(`Обновлено · ${data.total_products} позиций`);
+    showToast(`Обновлено · ${totalProducts} позиций`);
   } catch (e) {
     bar.classList.remove('active');
     showToast('Ошибка: ' + e.message);
