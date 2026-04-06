@@ -800,6 +800,15 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
 
     <div class="sidebar-divider"></div>
+    <div class="sidebar-label" style="display:flex;justify-content:space-between;align-items:center;">
+      Ключевые слова
+      <button class="icon-btn" onclick="openKeywordModal()" title="Добавить" style="width:24px;height:24px;border:1px solid var(--border);font-size:14px;">+</button>
+    </div>
+    <div class="store-list" id="keywordsList">
+      <div style="color:var(--text2);font-size:12px;padding:8px 12px;">Загрузка...</div>
+    </div>
+
+    <div class="sidebar-divider"></div>
     <div class="sidebar-label">Быстрые фильтры</div>
     <div class="store-list">
       <div class="filter-item" id="filterDown" onclick="setQuickFilter('down')">
@@ -1117,6 +1126,38 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Отмена</button>
       <button class="btn btn-primary" onclick="addProduct()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Keyword Modal -->
+<div class="modal-overlay" id="keywordModalOverlay" onclick="closeKeywordModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:420px;">
+    <div class="modal-header">
+      <span class="modal-title">Добавить ключевое слово</span>
+      <button class="drawer-close" onclick="closeKeywordModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Ключевое слово <span style="color:var(--red)">*</span></label>
+        <input type="text" class="form-input" placeholder="телевизор Haier 55" id="kwInput">
+        <div class="form-hint">Поисковый запрос для WB — как в строке поиска на сайте</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Категория</label>
+        <select class="form-select" id="kwCatInput">
+          <option value="">Без категории</option>
+          <option value="Электроника">Электроника</option>
+          <option value="Одежда">Одежда</option>
+          <option value="Бытовая техника">Бытовая техника</option>
+          <option value="Красота">Красота</option>
+          <option value="Продукты">Продукты</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeKeywordModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveKeyword()">Добавить</button>
     </div>
   </div>
 </div>
@@ -1573,43 +1614,42 @@ function importFeed() {
 }
 
 // ── Parsing ──
-function startParsing() {
+async function startParsing() {
+  if (!API_KEY) { showToast('Введите API ключ в настройках'); return; }
+
   const bar = document.getElementById('parsingBar');
   bar.classList.add('active');
-  let progress = 0;
-  if (parsingInterval) clearInterval(parsingInterval);
+  document.getElementById('progressFill').style.width = '30%';
+  document.getElementById('progressPercent').textContent = '...';
+  document.getElementById('progressLabel').textContent = 'Парсинг WB...';
 
-  parsingInterval = setInterval(() => {
-    progress += Math.random() * 12 + 4;
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(parsingInterval);
-      parsingInterval = null;
-      setTimeout(() => {
-        bar.classList.remove('active');
-        products.forEach(p => {
-          const d = (Math.random() - 0.5) * 0.06;
-          p.oldPrice = p.price;
-          p.price = Math.round(p.price * (1 + d));
-          p.change = parseFloat((d * 100).toFixed(1));
-          if (p.price < p.minPrice) p.minPrice = p.price;
-          p.time = '1 мин';
-        });
-        saveProducts();
-        updateStats();
-        renderTable();
-        showToast('Цены обновлены · ' + products.length + ' позиций');
-      }, 400);
+  try {
+    const resp = await fetch(`${API_BASE}/api/parse/run`, {
+      method: 'POST',
+      headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+    });
+
+    document.getElementById('progressFill').style.width = '70%';
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `Ошибка ${resp.status}`);
     }
-    document.getElementById('progressFill').style.width = progress + '%';
-    document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
-    document.getElementById('progressLabel').textContent =
-      `Парсинг WB... ${Math.round(progress * products.length / 100)} из ${products.length}`;
-  }, 300);
+
+    const data = await resp.json();
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('progressPercent').textContent = '100%';
+
+    await loadProducts();
+    setTimeout(() => bar.classList.remove('active'), 500);
+    showToast(`Обновлено · ${data.total_products} позиций`);
+  } catch (e) {
+    bar.classList.remove('active');
+    showToast('Ошибка: ' + e.message);
+  }
 }
 
 function stopParsing() {
-  if (parsingInterval) { clearInterval(parsingInterval); parsingInterval = null; }
   document.getElementById('parsingBar').classList.remove('active');
   showToast('Парсинг остановлен');
 }
@@ -1696,11 +1736,94 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
+// ── Keywords ──
+let keywordsData = [];
+
+async function loadKeywords() {
+  if (!API_KEY) return;
+  try {
+    const resp = await fetch(`${API_BASE}/api/keywords`, { headers: API_HEADERS });
+    if (!resp.ok) return;
+    keywordsData = await resp.json();
+    renderKeywords();
+  } catch (e) { console.error('loadKeywords error:', e); }
+}
+
+function renderKeywords() {
+  const el = document.getElementById('keywordsList');
+  if (keywordsData.length === 0) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px 12px;">Нет ключевых слов</div>';
+    return;
+  }
+  el.innerHTML = keywordsData.map(kw => `
+    <div class="store-item${kw.is_active ? '' : ' disabled'}" style="cursor:default;padding:6px 12px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(kw.keyword)}">${esc(kw.keyword)}</div>
+        <div style="font-size:11px;color:var(--text2);">${esc(kw.category || 'Без категории')}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="icon-btn" onclick="toggleKeyword('${kw.id}')" title="${kw.is_active ? 'Отключить' : 'Включить'}" style="width:22px;height:22px;font-size:11px;border:1px solid var(--border);">
+          ${kw.is_active ? '✓' : '○'}
+        </button>
+        <button class="icon-btn" onclick="deleteKeyword('${kw.id}')" title="Удалить" style="width:22px;height:22px;font-size:11px;border:1px solid var(--border);color:var(--red);">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveKeyword() {
+  const keyword = document.getElementById('kwInput').value.trim();
+  const category = document.getElementById('kwCatInput').value || null;
+  if (!keyword) { showToast('Введите ключевое слово'); return; }
+  if (!API_KEY) { showToast('Введите API ключ в настройках'); return; }
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/keywords`, {
+      method: 'POST',
+      headers: { ...API_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, category }),
+    });
+    if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.detail || 'Ошибка'); }
+    closeKeywordModal();
+    showToast('Ключевое слово добавлено');
+    await loadKeywords();
+  } catch (e) { showToast('Ошибка: ' + e.message); }
+}
+
+async function deleteKeyword(id) {
+  if (!API_KEY) return;
+  try {
+    await fetch(`${API_BASE}/api/keywords/${id}`, { method: 'DELETE', headers: API_HEADERS });
+    showToast('Ключевое слово удалено');
+    await loadKeywords();
+  } catch (e) { showToast('Ошибка удаления'); }
+}
+
+async function toggleKeyword(id) {
+  if (!API_KEY) return;
+  try {
+    await fetch(`${API_BASE}/api/keywords/${id}`, { method: 'PATCH', headers: API_HEADERS });
+    await loadKeywords();
+  } catch (e) { showToast('Ошибка'); }
+}
+
+function openKeywordModal() {
+  document.getElementById('kwInput').value = '';
+  document.getElementById('kwCatInput').value = '';
+  document.getElementById('keywordModalOverlay').classList.add('active');
+}
+
+function closeKeywordModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('keywordModalOverlay').classList.remove('active');
+}
+
 // ── Init ──
 updateStats();
 renderTable();
 loadSettings();
-loadProducts(); // try loading from API (async, won't block if API unavailable)
+loadProducts();
+loadKeywords();
 </script>
 </body>
 </html>
