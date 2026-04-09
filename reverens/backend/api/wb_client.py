@@ -66,6 +66,12 @@ async def search_wb(keyword: str) -> list[dict]:
         if not price:
             continue
 
+        # Skip out-of-stock products
+        sizes = p.get("sizes", [])
+        in_stock = any(s.get("stocks") for s in sizes)
+        if not in_stock:
+            continue
+
         article = str(p.get("id", ""))
         items.append({
             "product_id": article,
